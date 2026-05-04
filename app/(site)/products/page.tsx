@@ -71,11 +71,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="label" htmlFor="min">Min</label>
-              <input id="min" name="min" type="number" step="0.01" min="0" defaultValue={min} className="input" />
+              <input id="min" name="min" type="number" step="0.001" min="0" defaultValue={min} className="input" />
             </div>
             <div>
               <label className="label" htmlFor="max">Max</label>
-              <input id="max" name="max" type="number" step="0.01" min="0" defaultValue={max} className="input" />
+              <input id="max" name="max" type="number" step="0.001" min="0" defaultValue={max} className="input" />
             </div>
           </div>
           <div className="flex gap-2">
