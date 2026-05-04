@@ -4,15 +4,35 @@ import { ProductCard } from "@/components/ProductCard";
 
 export const dynamic = "force-dynamic";
 
+type FeaturedProduct = Awaited<ReturnType<typeof prisma.product.findMany>>[number];
+type CategoryRow = Awaited<ReturnType<typeof prisma.category.findMany>>[number];
+
+async function loadHomeData(): Promise<{
+  featured: FeaturedProduct[];
+  categories: CategoryRow[];
+  dbError: boolean;
+}> {
+  try {
+    const [featured, categories] = await Promise.all([
+      prisma.product.findMany({
+        where: { isActive: true, isFeatured: true },
+        take: 8,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.category.findMany({ orderBy: { name: "asc" } }),
+    ]);
+    return { featured, categories, dbError: false };
+  } catch (err) {
+    // Don't crash the landing page with an opaque server-error digest if the
+    // database isn't reachable yet (e.g. DATABASE_URL not configured on the
+    // hosting platform). Render the static parts of the page instead.
+    console.error("[home] failed to load data from database:", err);
+    return { featured: [], categories: [], dbError: true };
+  }
+}
+
 export default async function HomePage() {
-  const [featured, categories] = await Promise.all([
-    prisma.product.findMany({
-      where: { isActive: true, isFeatured: true },
-      take: 8,
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const { featured, categories, dbError } = await loadHomeData();
 
   return (
     <>
@@ -52,19 +72,31 @@ export default async function HomePage() {
         ))}
       </section>
 
+      {dbError && (
+        <section className="container-x py-4">
+          <div className="card p-4 border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+            Our catalog is temporarily unavailable. Please try again in a few moments
+            or <Link href="/contact" className="underline font-semibold">contact us</Link> for
+            an immediate quote.
+          </div>
+        </section>
+      )}
+
       {/* Categories */}
-      <section className="container-x py-8">
-        <h2 className="text-2xl font-bold text-kraft-900 mb-4">Shop by Category</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {categories.map((c) => (
-            <Link key={c.id} href={`/categories/${c.slug}`} className="card p-6 hover:shadow-md transition">
-              <div className="text-3xl mb-2" aria-hidden>📦</div>
-              <div className="font-semibold text-kraft-800">{c.name}</div>
-              <p className="text-xs text-kraft-600 mt-1 line-clamp-2">{c.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {categories.length > 0 && (
+        <section className="container-x py-8">
+          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Shop by Category</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categories.map((c) => (
+              <Link key={c.id} href={`/categories/${c.slug}`} className="card p-6 hover:shadow-md transition">
+                <div className="text-3xl mb-2" aria-hidden>📦</div>
+                <div className="font-semibold text-kraft-800">{c.name}</div>
+                <p className="text-xs text-kraft-600 mt-1 line-clamp-2">{c.description}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Featured */}
       {featured.length > 0 && (

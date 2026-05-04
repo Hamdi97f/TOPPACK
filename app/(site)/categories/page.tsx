@@ -4,13 +4,25 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-    include: { _count: { select: { products: true } } },
-  });
+  let categories: Array<Awaited<ReturnType<typeof prisma.category.findMany>>[number] & { _count: { products: number } }> = [];
+  let dbError = false;
+  try {
+    categories = await prisma.category.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { products: true } } },
+    });
+  } catch (err) {
+    console.error("[categories] failed to load data from database:", err);
+    dbError = true;
+  }
   return (
     <div className="container-x py-8">
       <h1 className="text-2xl font-bold text-kraft-900 mb-4">Categories</h1>
+      {dbError && (
+        <div className="card p-4 mb-4 border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+          Our catalog is temporarily unavailable. Please try again shortly.
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {categories.map((c) => (
           <Link key={c.id} href={`/categories/${c.slug}`} className="card p-6 hover:shadow-md transition">
