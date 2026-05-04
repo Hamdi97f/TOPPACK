@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = { q?: string; category?: string; wall?: string; min?: string; max?: string };
 
-export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { q, category, wall, min, max } = searchParams;
+export default async function ProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const { q, category, wall, min, max } = await searchParams;
   const where: Record<string, unknown> = { isActive: true };
   if (q) where.OR = [
     { name: { contains: q } },

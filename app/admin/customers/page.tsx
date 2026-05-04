@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCustomersPage({ searchParams }: { searchParams: { q?: string } }) {
-  const q = searchParams.q?.trim();
+export default async function AdminCustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q: rawQ } = await searchParams;
+  const q = rawQ?.trim();
   const users = await prisma.user.findMany({
     where: {
       role: "CUSTOMER",

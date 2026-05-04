@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { productSchema } from "@/lib/validators";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { response } = await requireAdmin();
   if (response) return response;
+  const { id } = await params;
   let body: unknown;
   try {
     body = await req.json();
@@ -17,18 +18,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid data" }, { status: 400 });
   }
   try {
-    const product = await prisma.product.update({ where: { id: params.id }, data: parsed.data });
+    const product = await prisma.product.update({ where: { id }, data: parsed.data });
     return NextResponse.json({ product });
   } catch {
     return NextResponse.json({ error: "Update failed" }, { status: 400 });
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { response } = await requireAdmin();
   if (response) return response;
+  const { id } = await params;
   try {
-    await prisma.product.delete({ where: { id: params.id } });
+    await prisma.product.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

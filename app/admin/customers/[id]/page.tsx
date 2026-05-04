@@ -6,9 +6,10 @@ import { CustomerActiveToggle } from "@/components/admin/CustomerActiveToggle";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCustomerDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminCustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { orders: { orderBy: { createdAt: "desc" } } },
   });
   if (!user) notFound();

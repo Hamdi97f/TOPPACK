@@ -4,8 +4,8 @@ import { formatPrice, ORDER_STATUSES } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: { status?: string } }) {
-  const status = searchParams.status;
+export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const { status } = await searchParams;
   const orders = await prisma.order.findMany({
     where: status && (ORDER_STATUSES as readonly string[]).includes(status) ? { status } : undefined,
     orderBy: { createdAt: "desc" },

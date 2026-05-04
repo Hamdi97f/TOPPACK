@@ -5,8 +5,9 @@ import { ProductDeleteButton } from "@/components/admin/ProductDeleteButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProductsPage({ searchParams }: { searchParams: { q?: string } }) {
-  const q = searchParams.q?.trim();
+export default async function AdminProductsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q: rawQ } = await searchParams;
+  const q = rawQ?.trim();
   const products = await prisma.product.findMany({
     where: q
       ? { OR: [{ name: { contains: q } }, { sku: { contains: q } }] }
