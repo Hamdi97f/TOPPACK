@@ -118,8 +118,8 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
           <input id="wallType" name="wallType" required defaultValue={initial?.wallType ?? "Simple cannelure"} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="price">Prix (USD)</label>
-          <input id="price" name="price" type="number" step="0.01" min="0" required defaultValue={initial?.price ?? ""} className="input" />
+          <label className="label" htmlFor="price">Prix (DT)</label>
+          <input id="price" name="price" type="number" step="0.001" min="0" required defaultValue={initial?.price ?? ""} className="input" />
         </div>
         <div>
           <label className="label" htmlFor="stock">Stock</label>

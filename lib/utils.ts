@@ -1,9 +1,15 @@
-export function formatPrice(value: number, currency: string = "USD"): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
+// Prices are denominated in Tunisian Dinars (DT). The dinar is conventionally
+// quoted with 3 decimal places (millimes), so both display and input use 3
+// fractional digits. We render the symbol manually as "DT" because that is the
+// usual local notation in French Tunisian usage (Intl would print "TND").
+// The `currency` parameter is accepted for backwards compatibility with
+// previous call sites and is intentionally ignored.
+export function formatPrice(value: number, _currency: string = "TND"): string { // eslint-disable-line no-unused-vars
+  const formatted = new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   }).format(value);
+  return `${formatted} DT`;
 }
 
 export function slugify(text: string): string {
