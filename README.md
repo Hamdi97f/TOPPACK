@@ -7,7 +7,7 @@ dashboard for managing orders, products, categories and customers.
 ## Tech stack
 
 - **Next.js 14** (App Router) + TypeScript
-- **Prisma ORM** (SQLite for development; portable to PostgreSQL)
+- **Prisma ORM** with **PostgreSQL** (works locally and on serverless platforms like Netlify/Vercel)
 - **NextAuth** (credentials provider, JWT sessions, role-based access)
 - **Tailwind CSS** for styling
 - **Zod** for input validation
@@ -44,6 +44,7 @@ dashboard for managing orders, products, categories and customers.
 ### Prerequisites
 - Node.js 20+
 - npm 10+
+- A PostgreSQL database (local Docker, Neon, Supabase, Vercel Postgres, RDS, …)
 
 ### Install and run
 
@@ -53,9 +54,11 @@ npm install
 
 # 2. Set up environment variables
 cp .env.example .env
-# Edit .env and set NEXTAUTH_SECRET to a long random string.
+# Edit .env:
+#   - DATABASE_URL: your Postgres connection string
+#   - NEXTAUTH_SECRET: a long random string (e.g. `openssl rand -base64 32`)
 
-# 3. Initialise the database (creates dev.db) and generate the Prisma client
+# 3. Create the schema in your database and generate the Prisma client
 npx prisma migrate dev --name init
 
 # 4. Seed sample data (admin user, categories, ~10 products)
@@ -66,6 +69,12 @@ npm run dev
 ```
 
 Visit <http://localhost:3000>.
+
+> **Need a quick local Postgres?** Run:
+> ```bash
+> docker run --name toppack-pg -e POSTGRES_PASSWORD=toppack -e POSTGRES_DB=toppack -p 5432:5432 -d postgres:16
+> ```
+> Then set `DATABASE_URL="postgresql://postgres:toppack@localhost:5432/toppack?schema=public"`.
 
 ### Default admin credentials (created by the seed)
 
@@ -99,10 +108,40 @@ types/           type augmentations (NextAuth)
 
 ## Switching to PostgreSQL
 
-1. In `prisma/schema.prisma`, change the `datasource` provider to `"postgresql"`.
-2. Set `DATABASE_URL` to your Postgres connection string.
-3. Run `npx prisma migrate dev --name init` to create the schema in Postgres.
-4. (Optional) Re-seed with `npm run db:seed`.
+The schema already uses PostgreSQL (`prisma/schema.prisma`). To target a different
+database in production:
+
+1. Set `DATABASE_URL` to your Postgres connection string (use the **pooled / serverless**
+   URL when deploying on Lambda-based platforms like Netlify or Vercel).
+2. Run `npx prisma migrate deploy` (or `npx prisma db push` in early stages) against
+   the target database.
+3. (Optional) Re-seed with `npm run db:seed`.
+
+## Deploying to Netlify
+
+The repo ships with `netlify.toml` and is compatible with the official
+**`@netlify/plugin-nextjs`** runtime (auto-detected).
+
+1. **Provision a Postgres database** (Neon, Supabase, Vercel Postgres, etc.). Copy the
+   pooled connection URL.
+2. **Run the migration** from your machine pointing at the production DB:
+   ```bash
+   DATABASE_URL="<your-postgres-url>" npx prisma migrate deploy
+   DATABASE_URL="<your-postgres-url>" npm run db:seed   # optional, creates admin + sample data
+   ```
+3. **In Netlify → Site settings → Environment variables**, set:
+   | Variable          | Value                                                |
+   | ----------------- | ---------------------------------------------------- |
+   | `DATABASE_URL`    | The pooled Postgres connection string                |
+   | `NEXTAUTH_SECRET` | A long random string (`openssl rand -base64 32`)     |
+   | `NEXTAUTH_URL`    | Your public site URL, e.g. `https://your-site.netlify.app` |
+4. Trigger a **Clear cache and deploy site** so Prisma Client is regenerated against
+   the production schema.
+
+> **Why not SQLite?** Netlify (and any AWS Lambda based runtime) provides a read-only,
+> ephemeral filesystem. A `file:./dev.db` database cannot be packaged with the function
+> and writes would be lost on every cold start, which is why the previous SQLite-based
+> deploy crashed every server-rendered page with a generic "Application error" digest.
 
 ## Useful scripts
 

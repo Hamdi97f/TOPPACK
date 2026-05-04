@@ -1,12 +1,18 @@
 // TOPPACK Prisma schema
-// To switch to PostgreSQL: change provider to "postgresql" and update DATABASE_URL.
+// Uses PostgreSQL so the app can run on serverless platforms (Netlify, Vercel, etc.)
+// where the local filesystem is read-only / ephemeral and SQLite is not viable.
+// For local development, point DATABASE_URL at any Postgres instance
+// (Neon, Supabase, Docker, etc.) — see README.md.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Native engine for local dev plus the engine used by Netlify/AWS Lambda
+  // (Amazon Linux 2 / 2023 with OpenSSL 1.0.x and 3.0.x respectively).
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

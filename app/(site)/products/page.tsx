@@ -21,12 +21,23 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   if (max) priceFilter.lte = Number(max);
   if (Object.keys(priceFilter).length) where.price = priceFilter;
 
-  const [products, categories, wallTypesRaw] = await Promise.all([
-    prisma.product.findMany({ where, orderBy: { createdAt: "desc" } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-    prisma.product.findMany({ where: { isActive: true }, distinct: ["wallType"], select: { wallType: true } }),
-  ]);
-  const wallTypes = wallTypesRaw.map((p) => p.wallType).sort();
+  let products: Awaited<ReturnType<typeof prisma.product.findMany>> = [];
+  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = [];
+  let wallTypes: string[] = [];
+  let dbError = false;
+  try {
+    const [p, c, wallTypesRaw] = await Promise.all([
+      prisma.product.findMany({ where, orderBy: { createdAt: "desc" } }),
+      prisma.category.findMany({ orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where: { isActive: true }, distinct: ["wallType"], select: { wallType: true } }),
+    ]);
+    products = p;
+    categories = c;
+    wallTypes = wallTypesRaw.map((p) => p.wallType).sort();
+  } catch (err) {
+    console.error("[products] failed to load data from database:", err);
+    dbError = true;
+  }
 
   return (
     <div className="container-x py-8 grid md:grid-cols-[16rem_1fr] gap-6">
@@ -72,7 +83,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </aside>
       <section>
         <h1 className="text-2xl font-bold text-kraft-900 mb-4">All Products</h1>
-        {products.length === 0 ? (
+        {dbError ? (
+          <div className="card p-8 text-center text-amber-900 bg-amber-50 border border-amber-300">
+            Our catalog is temporarily unavailable. Please try again shortly.
+          </div>
+        ) : products.length === 0 ? (
           <div className="card p-8 text-center text-kraft-600">No products match your filters.</div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
