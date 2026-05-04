@@ -86,6 +86,22 @@ Visit <http://localhost:3000>.
 > and `ADMIN_PASSWORD` in `.env` before running `npm run db:seed`, or by updating the
 > credentials in the admin UI.
 
+### Admin login without seeding the database
+
+The values of `ADMIN_EMAIL` and `ADMIN_PASSWORD` are also accepted by NextAuth at runtime
+as a valid `ADMIN` login, **even if the database has not been seeded** (or is temporarily
+unreachable). This means that on a fresh deployment you can sign in to `/admin` immediately
+after setting these two environment variables in your hosting provider (e.g. Netlify →
+Site configuration → Environment variables) — no `npm run db:seed` step required for the
+admin account itself.
+
+Customer accounts (created via `/register`) are still stored in the database as usual and
+require `DATABASE_URL` to be configured.
+
+> ⚠️ **Never commit real values for `ADMIN_EMAIL` / `ADMIN_PASSWORD` to git.** Set them only
+> in your hosting provider's environment-variable UI (or in a local, git-ignored `.env`
+> file).
+
 ## Project structure
 
 ```
