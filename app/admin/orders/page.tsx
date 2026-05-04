@@ -1,19 +1,28 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPrice, ORDER_STATUSES } from "@/lib/utils";
+import { safeQuery } from "@/lib/safe-query";
+import { DbErrorBanner } from "@/components/admin/DbErrorBanner";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { status } = await searchParams;
-  const orders = await prisma.order.findMany({
-    where: status && (ORDER_STATUSES as readonly string[]).includes(status) ? { status } : undefined,
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const result = await safeQuery(
+    "order.findMany",
+    () =>
+      prisma.order.findMany({
+        where: status && (ORDER_STATUSES as readonly string[]).includes(status) ? { status } : undefined,
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      }),
+    [] as Awaited<ReturnType<typeof prisma.order.findMany>>
+  );
+  const orders = result.data;
   return (
     <div>
       <h1 className="text-2xl font-bold text-kraft-900 mb-4">Orders</h1>
+      {!result.ok && <DbErrorBanner error={result.error} />}
       <form className="mb-4 flex items-center gap-2">
         <label htmlFor="status" className="text-sm">Status:</label>
         <select id="status" name="status" defaultValue={status ?? ""} className="select max-w-xs">

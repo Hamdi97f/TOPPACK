@@ -145,6 +145,10 @@ The repo ships with `netlify.toml` and is compatible with the official
    DATABASE_URL="<your-postgres-url>" npx prisma migrate deploy
    DATABASE_URL="<your-postgres-url>" npm run db:seed   # optional, creates admin + sample data
    ```
+   > The `npm run build` step also runs `prisma db push` automatically on every
+   > Netlify build (best-effort — it logs and continues if `DATABASE_URL` is
+   > missing or unreachable), so a freshly-provisioned Postgres will get its
+   > tables created on the first deploy without any manual step.
 3. **In Netlify → Site settings → Environment variables**, set:
    | Variable          | Value                                                |
    | ----------------- | ---------------------------------------------------- |
