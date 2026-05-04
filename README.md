@@ -2,16 +2,21 @@
 
 E-commerce website for selling **corrugated cardboard boxes** — single-wall, double-wall,
 mailer and custom-printed packaging — with a public storefront and a private admin
-dashboard for managing orders, products, categories and customers.
+dashboard for managing orders, products and categories.
 
 ## Tech stack
 
 - **Next.js 14** (App Router) + TypeScript
-- **Prisma ORM** with **PostgreSQL** (works locally and on serverless platforms like Netlify/Vercel)
 - **NextAuth** (credentials provider, JWT sessions, role-based access)
+- **api-gateway webapp** (`https://hycvkzijiwnmcwejvugj.supabase.co/functions/v1/api-gateway`)
+  for all persistent data — products, categories, orders, users and file storage
 - **Tailwind CSS** for styling
 - **Zod** for input validation
-- **bcryptjs** for password hashing
+
+There is **no local database**. Every server-side data fetch is performed against the
+remote api-gateway via `lib/api-client.ts`. NextAuth is kept only as the session/cookie
+layer; the credentials provider authenticates against the webapp's `POST /login` and
+stores the issued bearer token inside the JWT for all subsequent per-user calls.
 
 ## Features
 
@@ -21,30 +26,51 @@ dashboard for managing orders, products, categories and customers.
 - Category and product detail pages (with dimension table)
 - Persistent cart (localStorage)
 - Checkout with customer details and payment method (Cash on Delivery, Bank Transfer)
-- Order confirmation with reference number
-- Customer account: registration, login, profile, order history
+- Order confirmation
+- Customer account: registration, login, order history
 
 ### Private admin (`/admin`, role = `ADMIN`)
-- Dashboard with KPIs (orders, 30-day revenue, new customers, low-stock items)
+- Dashboard with KPIs (orders, 30-day revenue, active products, low-stock items)
 - **Products**: list, create, edit, delete, image upload, activate/deactivate, feature
 - **Categories**: full CRUD
 - **Orders**: filter by status, view details, update status, print-friendly invoice
-- **Customers**: list, view profile and order history, enable/disable accounts
+
+> Admin must be granted `is_admin = true` in the api-gateway webapp. The previous
+> `ADMIN_EMAIL` / `ADMIN_PASSWORD` environment-variable bypass has been removed.
 
 ### Security
 - Server-side authorization on every admin page and API route (middleware + `requireAdmin` helper)
-- Passwords hashed with bcrypt, never returned in responses
-- Order pricing **always recomputed on the server** from the database — never trusted from the client
-- Stock decremented atomically inside a transaction
-- File uploads restricted to images, capped at 5 MB, with server-generated random filenames
+- Order pricing **always recomputed on the server** (by the api-gateway, from product prices) — never trusted from the client
+- File uploads restricted to images, capped at 5 MB
 - Input validation on every endpoint with Zod
+- The `TOPPACK_API_KEY` is only ever read server-side and never exposed to the browser
+
+## Schema shims
+
+The api-gateway has a leaner data model than TOPPACK originally used. A few fields are
+preserved by packing them into existing string columns; helpers in
+`lib/api-client.ts` handle the encoding/decoding:
+
+| TOPPACK field                                      | Storage on the api-gateway                          |
+| -------------------------------------------------- | --------------------------------------------------- |
+| `Product.slug`                                     | Derived from `name` via slugify; also packed in `description` extras |
+| `Product.sku`, `lengthCm`, `widthCm`, `heightCm`, `wallType`, `isFeatured` | JSON tail appended to `description` (sentinel-delimited) |
+| `Category.slug`                                    | Derived from `name` via slugify                     |
+| `Order.reference`                                  | Use the api-gateway's returned `id` as the reference |
+| `Order.customerPhone`, multi-line address          | Concatenated into `shipping_address`; parsed best-effort for display |
+| `Order.paymentMethod` (COD vs bank transfer)       | Encoded as a leading `PAYMENT: …` line in `notes`   |
+| `OrderItem.name`                                   | Looked up from the product on display               |
+
+There is no list-users endpoint on the api-gateway, so the previous `/admin/customers`
+page has been removed.
 
 ## Getting started
 
 ### Prerequisites
 - Node.js 20+
 - npm 10+
-- A PostgreSQL database (local Docker, Neon, Supabase, Vercel Postgres, RDS, …)
+- An api-gateway project with an issued API key, plus a "service" non-admin user
+  whose credentials can be used for anonymous catalog browsing on the storefront
 
 ### Install and run
 
@@ -54,53 +80,22 @@ npm install
 
 # 2. Set up environment variables
 cp .env.example .env
-# Edit .env:
-#   - DATABASE_URL: your Postgres connection string
+# Edit .env and fill in:
+#   - TOPPACK_API_KEY: your api-gateway project key
+#   - TOPPACK_SERVICE_EMAIL / TOPPACK_SERVICE_PASSWORD: a regular (non-admin) user
+#       used to fetch the public catalog for anonymous visitors
 #   - NEXTAUTH_SECRET: a long random string (e.g. `openssl rand -base64 32`)
 
-# 3. Create the schema in your database and generate the Prisma client
-npx prisma migrate dev --name init
-
-# 4. Seed sample data (admin user, categories, ~10 products)
-npm run db:seed
-
-# 5. Start the dev server
+# 3. Start the dev server
 npm run dev
 ```
 
 Visit <http://localhost:3000>.
 
-> **Need a quick local Postgres?** Run:
-> ```bash
-> docker run --name toppack-pg -e POSTGRES_PASSWORD=toppack -e POSTGRES_DB=toppack -p 5432:5432 -d postgres:16
-> ```
-> Then set `DATABASE_URL="postgresql://postgres:toppack@localhost:5432/toppack?schema=public"`.
+### Creating an admin user
 
-### Default admin credentials (created by the seed)
-
-| Email                 | Password    |
-| --------------------- | ----------- |
-| `admin@toppack.local` | `admin1234` |
-
-> **Change these immediately** in any non-development environment by setting `ADMIN_EMAIL`
-> and `ADMIN_PASSWORD` in `.env` before running `npm run db:seed`, or by updating the
-> credentials in the admin UI.
-
-### Admin login without seeding the database
-
-The values of `ADMIN_EMAIL` and `ADMIN_PASSWORD` are also accepted by NextAuth at runtime
-as a valid `ADMIN` login, **even if the database has not been seeded** (or is temporarily
-unreachable). This means that on a fresh deployment you can sign in to `/admin` immediately
-after setting these two environment variables in your hosting provider (e.g. Netlify →
-Site configuration → Environment variables) — no `npm run db:seed` step required for the
-admin account itself.
-
-Customer accounts (created via `/register`) are still stored in the database as usual and
-require `DATABASE_URL` to be configured.
-
-> ⚠️ **Never commit real values for `ADMIN_EMAIL` / `ADMIN_PASSWORD` to git.** Set them only
-> in your hosting provider's environment-variable UI (or in a local, git-ignored `.env`
-> file).
+Create a user in your api-gateway webapp and set `is_admin = true` for that account.
+Sign in to TOPPACK with those credentials to access `/admin`.
 
 ## Project structure
 
@@ -110,81 +105,35 @@ app/
   admin/         protected admin dashboard (requires role=ADMIN)
   api/           Next.js Route Handlers
     auth/        NextAuth endpoint
-    register/    customer registration
-    orders/      order placement (public)
-    admin/       admin-only APIs (products, categories, orders, users, upload)
+    register/    customer registration (proxies POST /register)
+    orders/      order placement (proxies POST /orders)
+    admin/       admin-only proxies to the api-gateway (products, categories, orders, upload)
 components/      shared UI components
   admin/         admin-specific components
-lib/             prisma client, auth options, validators, utilities
-prisma/          schema, migrations, seed
-public/uploads/  uploaded product images
+lib/
+  api-client.ts  typed wrapper around the api-gateway (auth, products, orders, upload, shims)
+  auth.ts        NextAuth options (credentials → POST /login)
+  api-auth.ts    requireAdmin/requireUser helpers for route handlers
+  utils.ts       formatting + status helpers
+  validators.ts  Zod schemas
 middleware.ts    admin route protection
-types/           type augmentations (NextAuth)
+types/           NextAuth augmentations + api-gateway types
 ```
-
-## Switching to PostgreSQL
-
-The schema already uses PostgreSQL (`prisma/schema.prisma`). To target a different
-database in production:
-
-1. Set `DATABASE_URL` to your Postgres connection string (use the **pooled / serverless**
-   URL when deploying on Lambda-based platforms like Netlify or Vercel).
-2. Run `npx prisma migrate deploy` (or `npx prisma db push` in early stages) against
-   the target database.
-3. (Optional) Re-seed with `npm run db:seed`.
 
 ## Deploying to Netlify
 
 The repo ships with `netlify.toml` and is compatible with the official
 **`@netlify/plugin-nextjs`** runtime (auto-detected).
 
-1. **Provision a Postgres database** (Neon, Supabase, Vercel Postgres, etc.). Copy the
-   pooled connection URL.
-2. **Run the migration** from your machine pointing at the production DB:
-   ```bash
-   DATABASE_URL="<your-postgres-url>" npx prisma migrate deploy
-   DATABASE_URL="<your-postgres-url>" npm run db:seed   # optional, creates admin + sample data
-   ```
-   > The `npm run build` step also runs `prisma db push` automatically on every
-   > Netlify build (best-effort — it logs and continues if `DATABASE_URL` is
-   > missing or unreachable), so a freshly-provisioned Postgres will get its
-   > tables created on the first deploy without any manual step.
-3. **In Netlify → Site settings → Environment variables**, set:
-   | Variable          | Value                                                |
-   | ----------------- | ---------------------------------------------------- |
-   | `DATABASE_URL`    | The pooled Postgres connection string                |
-   | `NEXTAUTH_SECRET` | A long random string (`openssl rand -base64 32`)     |
-   | `NEXTAUTH_URL`    | Your public site URL, e.g. `https://your-site.netlify.app` |
-4. Trigger a **Clear cache and deploy site** so Prisma Client is regenerated against
-   the production schema.
+In Netlify → Site settings → Environment variables, set:
 
-> **Why not SQLite?** Netlify (and any AWS Lambda based runtime) provides a read-only,
-> ephemeral filesystem. A `file:./dev.db` database cannot be packaged with the function
-> and writes would be lost on every cold start, which is why the previous SQLite-based
-> deploy crashed every server-rendered page with a generic "Application error" digest.
+| Variable                  | Value                                                                |
+| ------------------------- | -------------------------------------------------------------------- |
+| `TOPPACK_API_KEY`         | Your api-gateway project key (server-side only, safe to store here)  |
+| `TOPPACK_API_BASE_URL`    | (optional) override of the default api-gateway URL                   |
+| `TOPPACK_SERVICE_EMAIL`   | Email of a non-admin webapp user used for anonymous catalog reads    |
+| `TOPPACK_SERVICE_PASSWORD`| Password of that service user                                         |
+| `NEXTAUTH_SECRET`         | Long random string (`openssl rand -base64 32`)                       |
+| `NEXTAUTH_URL`            | Your public site URL, e.g. `https://your-site.netlify.app`           |
 
-## Useful scripts
-
-| Script              | Purpose                              |
-| ------------------- | ------------------------------------ |
-| `npm run dev`       | Start the Next.js dev server         |
-| `npm run build`     | Generate Prisma client + build       |
-| `npm run start`     | Run the production build             |
-| `npm run lint`      | Run ESLint                           |
-| `npm run db:migrate`| `prisma migrate dev`                 |
-| `npm run db:push`   | `prisma db push` (schema sync)       |
-| `npm run db:seed`   | Seed initial data                    |
-
-## Extending
-
-- **Payments**: a Stripe integration can be added by creating a new Route Handler
-  (e.g. `app/api/checkout/stripe/route.ts`), passing the cart there from the checkout
-  page, and recording the resulting payment intent on the order.
-- **Image storage**: the upload endpoint writes to `/public/uploads`. Swap with S3 /
-  Cloudinary by replacing the body of `app/api/admin/upload/route.ts`.
-- **Email**: hook a provider (Resend, SendGrid, etc.) into the order-creation handler
-  in `app/api/orders/route.ts` to send confirmation emails.
-
-## License
-
-Proprietary — © TOPPACK.
+No database provisioning step is required.

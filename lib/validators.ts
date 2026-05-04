@@ -2,7 +2,6 @@ import { z } from "zod";
 import { ORDER_STATUSES, PAYMENT_METHODS } from "./utils";
 
 export const registerSchema = z.object({
-  name: z.string().min(2).max(100),
   email: z.string().email().max(200),
   password: z.string().min(8).max(200),
 });
@@ -26,7 +25,6 @@ export const productSchema = z.object({
 
 export const categorySchema = z.object({
   name: z.string().min(2).max(100),
-  slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/),
   description: z.string().max(2000).optional().nullable(),
 });
 
@@ -50,9 +48,4 @@ export const checkoutSchema = z.object({
 
 export const orderStatusUpdateSchema = z.object({
   status: z.enum(ORDER_STATUSES),
-});
-
-export const userUpdateSchema = z.object({
-  isActive: z.boolean().optional(),
-  role: z.enum(["CUSTOMER", "ADMIN"]).optional(),
 });

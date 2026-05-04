@@ -1,28 +1,29 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
 import { ProductDeleteButton } from "@/components/admin/ProductDeleteButton";
-import { safeQuery } from "@/lib/safe-query";
-import { DbErrorBanner } from "@/components/admin/DbErrorBanner";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "ADMIN") redirect("/login?callbackUrl=/admin/products");
+  const token = session.user.apiToken;
+
   const { q: rawQ } = await searchParams;
-  const q = rawQ?.trim();
-  const result = await safeQuery(
-    "product.findMany",
-    () =>
-      prisma.product.findMany({
-        where: q
-          ? { OR: [{ name: { contains: q } }, { sku: { contains: q } }] }
-          : undefined,
-        orderBy: { createdAt: "desc" },
-        include: { category: true },
-      }),
-    [] as Awaited<ReturnType<typeof prisma.product.findMany<{ include: { category: true } }>>>
-  );
-  const products = result.data;
+  const q = rawQ?.trim().toLowerCase();
+
+  const [rawProducts, rawCategories] = await Promise.all([
+    apiClient.listProducts(token).catch((e) => { console.error("[admin/products] failed", e); return []; }),
+    apiClient.listCategories(token).catch((e) => { console.error("[admin/products] categories failed", e); return []; }),
+  ]);
+  const categoriesById = new Map(rawCategories.map(adaptCategory).map((c) => [c.id, c]));
+  const products = rawProducts
+    .map(adaptProduct)
+    .filter((p) => !q || `${p.name} ${p.sku}`.toLowerCase().includes(q));
 
   return (
     <div>
@@ -30,9 +31,8 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         <h1 className="text-2xl font-bold text-kraft-900">Products</h1>
         <Link href="/admin/products/new" className="btn-primary">New Product</Link>
       </div>
-      {!result.ok && <DbErrorBanner error={result.error} />}
       <form className="mb-4">
-        <input name="q" defaultValue={q} placeholder="Search by name or SKU…" className="input max-w-sm" />
+        <input name="q" defaultValue={rawQ ?? ""} placeholder="Search by name or SKU…" className="input max-w-sm" />
       </form>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
@@ -54,7 +54,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                   <Link href={`/admin/products/${p.id}`} className="hover:text-kraft-700 font-medium">{p.name}</Link>
                 </td>
                 <td className="p-2 font-mono text-xs">{p.sku}</td>
-                <td className="p-2">{p.category.name}</td>
+                <td className="p-2">{p.categoryId ? categoriesById.get(p.categoryId)?.name ?? "—" : "—"}</td>
                 <td className="p-2 text-right">{formatPrice(p.price)}</td>
                 <td className="p-2 text-right">{p.stock}</td>
                 <td className="p-2">

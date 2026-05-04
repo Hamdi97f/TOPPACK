@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import {
+  apiClient,
+  ApiError,
+  buildOrderNotes,
+  buildShippingAddress,
+  getServiceToken,
+} from "@/lib/api-client";
 import { checkoutSchema } from "@/lib/validators";
-import { generateOrderReference } from "@/lib/utils";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -23,70 +28,25 @@ export async function POST(req: Request) {
   }
   const data = parsed.data;
 
-  // Load products and validate availability + price (NEVER trust client prices).
-  const productIds = data.items.map((i) => i.productId);
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, isActive: true },
-  });
-  if (products.length !== productIds.length) {
-    return NextResponse.json({ error: "One or more products are unavailable" }, { status: 400 });
-  }
-
-  const productMap = new Map(products.map((p) => [p.id, p]));
-  let subtotal = 0;
-  const orderItemsData = data.items.map((i) => {
-    const p = productMap.get(i.productId)!;
-    if (p.stock < i.quantity) {
-      throw new Error(`Insufficient stock for ${p.name}`);
-    }
-    const lineTotal = p.price * i.quantity;
-    subtotal += lineTotal;
-    return {
-      productId: p.id,
-      name: p.name,
-      quantity: i.quantity,
-      unitPrice: p.price,
-      lineTotal,
-    };
-  });
+  // Use the customer's own bearer token if logged in, otherwise the service
+  // account so the api-gateway can compute pricing from the product catalog.
+  // The webapp recomputes total server-side from product prices — client
+  // prices are never trusted.
+  const token = session?.user?.apiToken ?? (await getServiceToken());
 
   try {
-    const order = await prisma.$transaction(async (tx) => {
-      // Decrement stock atomically.
-      for (const item of orderItemsData) {
-        const updated = await tx.product.updateMany({
-          where: { id: item.productId, stock: { gte: item.quantity } },
-          data: { stock: { decrement: item.quantity } },
-        });
-        if (updated.count === 0) {
-          throw new Error("Insufficient stock");
-        }
-      }
-      return tx.order.create({
-        data: {
-          reference: generateOrderReference(),
-          userId: session?.user?.id ?? null,
-          customerName: data.customerName,
-          customerEmail: data.customerEmail,
-          customerPhone: data.customerPhone,
-          addressLine: data.addressLine,
-          city: data.city,
-          postalCode: data.postalCode,
-          country: data.country,
-          notes: data.notes ?? null,
-          paymentMethod: data.paymentMethod,
-          status: "PENDING",
-          subtotal,
-          total: subtotal,
-          items: { create: orderItemsData },
-        },
-      });
+    const order = await apiClient.createOrder(token, {
+      customer_name: data.customerName,
+      customer_email: data.customerEmail,
+      shipping_address: buildShippingAddress(data),
+      notes: buildOrderNotes(data.paymentMethod, data.notes ?? null),
+      items: data.items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
     });
-    return NextResponse.json({ id: order.id, reference: order.reference }, { status: 201 });
+    return NextResponse.json({ id: order.id, reference: order.id }, { status: 201 });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create order" },
-      { status: 400 }
-    );
+    if (err instanceof ApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
   }
 }

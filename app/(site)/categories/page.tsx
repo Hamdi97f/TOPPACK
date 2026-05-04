@@ -1,24 +1,27 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
-  let categories: Array<Awaited<ReturnType<typeof prisma.category.findMany>>[number] & { _count: { products: number } }> = [];
-  let dbError = false;
+  let categories: ReturnType<typeof adaptCategory>[] = [];
+  let counts = new Map<string, number>();
+  let apiError = false;
   try {
-    categories = await prisma.category.findMany({
-      orderBy: { name: "asc" },
-      include: { _count: { select: { products: true } } },
-    });
+    const [c, p] = await Promise.all([apiClient.listCategories(), apiClient.listProducts()]);
+    categories = c.map(adaptCategory);
+    for (const product of p.map(adaptProduct)) {
+      if (!product.categoryId) continue;
+      counts.set(product.categoryId, (counts.get(product.categoryId) ?? 0) + 1);
+    }
   } catch (err) {
-    console.error("[categories] failed to load data from database:", err);
-    dbError = true;
+    console.error("[categories] failed to load data from api-gateway:", err);
+    apiError = true;
   }
   return (
     <div className="container-x py-8">
       <h1 className="text-2xl font-bold text-kraft-900 mb-4">Categories</h1>
-      {dbError && (
+      {apiError && (
         <div className="card p-4 mb-4 border border-amber-300 bg-amber-50 text-amber-900 text-sm">
           Our catalog is temporarily unavailable. Please try again shortly.
         </div>
@@ -28,7 +31,7 @@ export default async function CategoriesPage() {
           <Link key={c.id} href={`/categories/${c.slug}`} className="card p-6 hover:shadow-md transition">
             <div className="font-semibold text-kraft-800 text-lg">{c.name}</div>
             <p className="text-sm text-kraft-700 mt-1">{c.description}</p>
-            <div className="text-xs text-kraft-600 mt-2">{c._count.products} products</div>
+            <div className="text-xs text-kraft-600 mt-2">{counts.get(c.id) ?? 0} products</div>
           </Link>
         ))}
       </div>

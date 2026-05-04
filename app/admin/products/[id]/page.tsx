@@ -1,16 +1,27 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { adaptCategory, adaptProduct, apiClient, ApiError } from "@/lib/api-client";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "ADMIN") redirect("/login?callbackUrl=/admin/products");
+  const token = session.user.apiToken;
   const { id } = await params;
-  const [product, categories] = await Promise.all([
-    prisma.product.findUnique({ where: { id } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-  ]);
-  if (!product) notFound();
+
+  let raw;
+  try {
+    raw = await apiClient.getProduct(token, id);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) notFound();
+    throw err;
+  }
+  const product = adaptProduct(raw);
+  const categories = (await apiClient.listCategories(token).catch(() => [])).map(adaptCategory);
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-kraft-900 mb-4">Edit Product</h1>
