@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
-import { apiClient, ApiError, packProductDescription } from "@/lib/api-client";
+import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
+import { apiClient, packProductDescription } from "@/lib/api-client";
 import { productSchema } from "@/lib/validators";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,10 +8,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (response || !session) return response!;
   const { id } = await params;
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "JSON invalide" }, { status: 400 }); }
   const parsed = productSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid data" }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Données invalides" }, { status: 400 });
   }
   const d = parsed.data;
   try {
@@ -34,9 +34,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     });
     return NextResponse.json({ product });
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
-    const msg = err instanceof Error ? err.message : "Update failed";
-    return NextResponse.json({ error: msg }, { status });
+    return apiErrorResponse(err, "Échec de la mise à jour du produit");
   }
 }
 
@@ -48,8 +46,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     await apiClient.deleteProduct(session.user.apiToken, id);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
-    const msg = err instanceof Error ? err.message : "Delete failed";
-    return NextResponse.json({ error: msg }, { status });
+    return apiErrorResponse(err, "Échec de la suppression du produit");
   }
 }

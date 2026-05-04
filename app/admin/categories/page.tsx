@@ -25,16 +25,16 @@ export default async function AdminCategoriesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-kraft-900">Categories</h1>
-        <Link href="/admin/categories/new" className="btn-primary">New Category</Link>
+        <h1 className="text-2xl font-bold text-kraft-900">Catégories</h1>
+        <Link href="/admin/categories/new" className="btn-primary">Nouvelle catégorie</Link>
       </div>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
-              <th className="text-left p-2">Name</th>
-              <th className="text-left p-2">Slug</th>
-              <th className="text-right p-2">Products</th>
+              <th className="text-left p-2">Nom</th>
+              <th className="text-left p-2">Identifiant URL</th>
+              <th className="text-right p-2">Produits</th>
               <th className="p-2"></th>
             </tr>
           </thead>
@@ -48,7 +48,7 @@ export default async function AdminCategoriesPage() {
               </tr>
             ))}
             {categories.length === 0 && (
-              <tr><td colSpan={4} className="p-6 text-center text-kraft-600">No categories yet.</td></tr>
+              <tr><td colSpan={4} className="p-6 text-center text-kraft-600">Aucune catégorie pour le moment.</td></tr>
             )}
           </tbody>
         </table>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
-import { apiClient, ApiError, packProductDescription } from "@/lib/api-client";
+import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
+import { apiClient, packProductDescription } from "@/lib/api-client";
 import { productSchema } from "@/lib/validators";
 
 export async function GET() {
@@ -10,9 +10,7 @@ export async function GET() {
     const products = await apiClient.listProducts(session.user.apiToken);
     return NextResponse.json({ products });
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
-    const msg = err instanceof Error ? err.message : "Failed to load products";
-    return NextResponse.json({ error: msg }, { status });
+    return apiErrorResponse(err, "Échec du chargement des produits");
   }
 }
 
@@ -20,10 +18,10 @@ export async function POST(req: Request) {
   const { session, response } = await requireAdmin();
   if (response || !session) return response!;
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "JSON invalide" }, { status: 400 }); }
   const parsed = productSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid data" }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Données invalides" }, { status: 400 });
   }
   const d = parsed.data;
   try {
@@ -46,8 +44,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ product }, { status: 201 });
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
-    const msg = err instanceof Error ? err.message : "Failed to create product";
-    return NextResponse.json({ error: msg }, { status });
+    return apiErrorResponse(err, "Échec de la création du produit");
   }
 }

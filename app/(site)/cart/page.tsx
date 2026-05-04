@@ -10,9 +10,9 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="container-x py-16 text-center">
-        <h1 className="text-2xl font-bold text-kraft-900">Your cart is empty</h1>
-        <p className="text-kraft-700 mt-2">Browse our boxes and add something to your cart.</p>
-        <Link href="/products" className="btn-primary mt-6 inline-flex">Shop now</Link>
+        <h1 className="text-2xl font-bold text-kraft-900">Votre panier est vide</h1>
+        <p className="text-kraft-700 mt-2">Parcourez nos cartons et ajoutez un article à votre panier.</p>
+        <Link href="/products" className="btn-primary mt-6 inline-flex">Acheter maintenant</Link>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export default function CartPage() {
   return (
     <div className="container-x py-8 grid lg:grid-cols-[1fr_22rem] gap-6">
       <section>
-        <h1 className="text-2xl font-bold text-kraft-900 mb-4">Your Cart</h1>
+        <h1 className="text-2xl font-bold text-kraft-900 mb-4">Votre panier</h1>
         <div className="card divide-y divide-kraft-100">
           {items.map((i) => (
             <div key={i.productId} className="p-4 flex items-center gap-4">
@@ -42,34 +42,34 @@ export default function CartPage() {
                 value={i.quantity}
                 onChange={(e) => setQuantity(i.productId, Number(e.target.value) || 1)}
                 className="input w-20"
-                aria-label={`Quantity for ${i.name}`}
+                aria-label={`Quantité pour ${i.name}`}
               />
               <div className="w-24 text-right font-semibold">{formatPrice(i.price * i.quantity)}</div>
               <button onClick={() => remove(i.productId)} className="text-red-600 hover:underline text-sm">
-                Remove
+                Retirer
               </button>
             </div>
           ))}
         </div>
-        <button onClick={clear} className="mt-3 text-sm text-kraft-600 hover:underline">Clear cart</button>
+        <button onClick={clear} className="mt-3 text-sm text-kraft-600 hover:underline">Vider le panier</button>
       </section>
       <aside className="card p-6 h-fit sticky top-20">
         <div className="flex justify-between text-sm">
-          <span>Subtotal</span>
+          <span>Sous-total</span>
           <span className="font-semibold">{formatPrice(subtotal)}</span>
         </div>
         <div className="flex justify-between text-sm mt-1 text-kraft-600">
-          <span>Shipping</span>
-          <span>Calculated at checkout</span>
+          <span>Livraison</span>
+          <span>Calculée à la commande</span>
         </div>
         <div className="border-t border-kraft-200 my-4" />
         <div className="flex justify-between text-lg font-bold">
           <span>Total</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
-        <Link href="/checkout" className="btn-primary w-full mt-4">Proceed to Checkout</Link>
+        <Link href="/checkout" className="btn-primary w-full mt-4">Passer à la commande</Link>
         <Link href="/products" className="block text-center mt-2 text-sm text-kraft-700 hover:underline">
-          Continue shopping
+          Continuer mes achats
         </Link>
       </aside>
     </div>

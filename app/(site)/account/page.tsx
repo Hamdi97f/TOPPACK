@@ -20,19 +20,19 @@ export default async function AccountPage() {
 
   return (
     <div className="container-x py-8 max-w-3xl">
-      <h1 className="text-2xl font-bold text-kraft-900">My Account</h1>
+      <h1 className="text-2xl font-bold text-kraft-900">Mon compte</h1>
       <div className="card p-6 mt-4">
         <div className="font-semibold">{user?.email ?? session.user.email}</div>
-        <div className="text-xs text-kraft-600 mt-1">Role: {session.user.role}</div>
+        <div className="text-xs text-kraft-600 mt-1">Rôle : {session.user.role === "ADMIN" ? "Administrateur" : "Client"}</div>
       </div>
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-bold text-kraft-900">Recent Orders</h2>
-          <Link href="/account/orders" className="text-sm text-kraft-700 hover:underline">View all</Link>
+          <h2 className="text-xl font-bold text-kraft-900">Commandes récentes</h2>
+          <Link href="/account/orders" className="text-sm text-kraft-700 hover:underline">Voir toutes</Link>
         </div>
         {recent.length === 0 ? (
-          <div className="card p-6 text-center text-kraft-600">No orders yet.</div>
+          <div className="card p-6 text-center text-kraft-600">Aucune commande pour le moment.</div>
         ) : (
           <div className="card divide-y divide-kraft-100">
             {recent.map((o) => (

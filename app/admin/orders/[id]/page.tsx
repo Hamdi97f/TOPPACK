@@ -37,8 +37,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     <div className="max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-kraft-900">Order {order.id}</h1>
-          {order.created_at && <div className="text-sm text-kraft-600">{new Date(order.created_at).toLocaleString()}</div>}
+          <h1 className="text-2xl font-bold text-kraft-900">Commande {order.id}</h1>
+          {order.created_at && <div className="text-sm text-kraft-600">{new Date(order.created_at).toLocaleString("fr-FR")}</div>}
         </div>
         <div className="flex gap-2">
           <OrderStatusForm id={order.id} status={order.status} />
@@ -48,13 +48,13 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
       <div className="grid md:grid-cols-2 gap-4">
         <section className="card p-4">
-          <h2 className="font-semibold mb-2">Customer</h2>
+          <h2 className="font-semibold mb-2">Client</h2>
           <div>{order.customer_name ?? "—"}</div>
           <div className="text-sm">{order.customer_email ?? "—"}</div>
           {shipping.customerPhone && <div className="text-sm">{shipping.customerPhone}</div>}
         </section>
         <section className="card p-4">
-          <h2 className="font-semibold mb-2">Shipping</h2>
+          <h2 className="font-semibold mb-2">Livraison</h2>
           <div>{shipping.addressLine || "—"}</div>
           {(shipping.city || shipping.postalCode) && <div>{shipping.city} {shipping.postalCode}</div>}
           {shipping.country && <div>{shipping.country}</div>}
@@ -62,13 +62,13 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       </div>
 
       <section className="card p-4 mt-4">
-        <h2 className="font-semibold mb-2">Items</h2>
+        <h2 className="font-semibold mb-2">Articles</h2>
         <table className="w-full text-sm">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
-              <th className="text-left p-2">Product</th>
-              <th className="text-right p-2">Qty</th>
-              <th className="text-right p-2">Unit</th>
+              <th className="text-left p-2">Produit</th>
+              <th className="text-right p-2">Qté</th>
+              <th className="text-right p-2">Unité</th>
               <th className="text-right p-2">Total</th>
             </tr>
           </thead>
@@ -96,9 +96,9 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       </section>
 
       <section className="card p-4 mt-4 text-sm">
-        <div><strong>Payment:</strong> {paymentMethodLabel(paymentMethod)}</div>
-        <div><strong>Status:</strong> {statusLabel(order.status)}</div>
-        {noteText && <div className="mt-2"><strong>Notes:</strong> {noteText}</div>}
+        <div><strong>Paiement :</strong> {paymentMethodLabel(paymentMethod)}</div>
+        <div><strong>Statut :</strong> {statusLabel(order.status)}</div>
+        {noteText && <div className="mt-2"><strong>Notes :</strong> {noteText}</div>}
       </section>
     </div>
   );

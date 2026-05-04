@@ -25,7 +25,7 @@ export function AddToCartButton({
         onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
         className="input w-24"
         disabled={disabled}
-        aria-label="Quantity"
+        aria-label="Quantité"
       />
       <button
         type="button"
@@ -37,7 +37,7 @@ export function AddToCartButton({
           setTimeout(() => setAdded(false), 1500);
         }}
       >
-        {disabled ? "Out of stock" : added ? "Added!" : "Add to Cart"}
+        {disabled ? "Rupture de stock" : added ? "Ajouté !" : "Ajouter au panier"}
       </button>
       <button
         type="button"
@@ -48,7 +48,7 @@ export function AddToCartButton({
           router.push("/cart");
         }}
       >
-        Buy Now
+        Acheter maintenant
       </button>
     </div>
   );

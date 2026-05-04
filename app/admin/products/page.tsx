@@ -28,22 +28,22 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-kraft-900">Products</h1>
-        <Link href="/admin/products/new" className="btn-primary">New Product</Link>
+        <h1 className="text-2xl font-bold text-kraft-900">Produits</h1>
+        <Link href="/admin/products/new" className="btn-primary">Nouveau produit</Link>
       </div>
       <form className="mb-4">
-        <input name="q" defaultValue={rawQ ?? ""} placeholder="Search by name or SKU…" className="input max-w-sm" />
+        <input name="q" defaultValue={rawQ ?? ""} placeholder="Rechercher par nom ou référence…" className="input max-w-sm" />
       </form>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
-              <th className="text-left p-2">Name</th>
-              <th className="text-left p-2">SKU</th>
-              <th className="text-left p-2">Category</th>
-              <th className="text-right p-2">Price</th>
+              <th className="text-left p-2">Nom</th>
+              <th className="text-left p-2">Référence</th>
+              <th className="text-left p-2">Catégorie</th>
+              <th className="text-right p-2">Prix</th>
               <th className="text-right p-2">Stock</th>
-              <th className="text-left p-2">Status</th>
+              <th className="text-left p-2">Statut</th>
               <th className="p-2"></th>
             </tr>
           </thead>
@@ -59,7 +59,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                 <td className="p-2 text-right">{p.stock}</td>
                 <td className="p-2">
                   <span className={`badge ${p.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
-                    {p.isActive ? "Active" : "Inactive"}
+                    {p.isActive ? "Actif" : "Inactif"}
                   </span>
                 </td>
                 <td className="p-2 text-right">
@@ -68,7 +68,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
               </tr>
             ))}
             {products.length === 0 && (
-              <tr><td colSpan={7} className="p-6 text-center text-kraft-600">No products found.</td></tr>
+              <tr><td colSpan={7} className="p-6 text-center text-kraft-600">Aucun produit trouvé.</td></tr>
             )}
           </tbody>
         </table>

@@ -27,15 +27,16 @@ export default async function HomePage() {
         <div className="container-x py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
             <h1 className="text-4xl md:text-5xl font-bold text-kraft-900 leading-tight">
-              Corrugated Cardboard Boxes for Every Business
+              Cartons en carton ondulé pour toutes les entreprises
             </h1>
             <p className="mt-4 text-lg text-kraft-800">
-              Single wall, double wall, mailer and custom-printed boxes — engineered for safe
-              shipping and built to your specifications.
+              Cartons simple cannelure, double cannelure, enveloppes d&apos;expédition et
+              cartons personnalisés — conçus pour une expédition sécurisée et fabriqués
+              selon vos spécifications.
             </p>
             <div className="mt-6 flex gap-3">
-              <Link href="/products" className="btn-primary">Shop Boxes</Link>
-              <Link href="/contact" className="btn-secondary">Request a Quote</Link>
+              <Link href="/products" className="btn-primary">Acheter des cartons</Link>
+              <Link href="/contact" className="btn-secondary">Demander un devis</Link>
             </div>
           </div>
           <div className="hidden md:flex justify-center">
@@ -46,9 +47,9 @@ export default async function HomePage() {
 
       <section className="container-x py-12 grid md:grid-cols-3 gap-6">
         {[
-          { t: "Custom Sizes", d: "Built to your exact dimensions and wall strength." },
-          { t: "Bulk Pricing", d: "Volume discounts for businesses and resellers." },
-          { t: "Fast Shipping", d: "Most orders ship within 48 hours from our warehouse." },
+          { t: "Tailles personnalisées", d: "Fabriqués à vos dimensions exactes et avec la résistance souhaitée." },
+          { t: "Tarifs en gros", d: "Remises sur volume pour les entreprises et les revendeurs." },
+          { t: "Livraison rapide", d: "La plupart des commandes sont expédiées sous 48 heures depuis notre entrepôt." },
         ].map((v) => (
           <div key={v.t} className="card p-6">
             <div className="font-bold text-kraft-800 text-lg">{v.t}</div>
@@ -60,16 +61,16 @@ export default async function HomePage() {
       {apiError && (
         <section className="container-x py-4">
           <div className="card p-4 border border-amber-300 bg-amber-50 text-amber-900 text-sm">
-            Our catalog is temporarily unavailable. Please try again in a few moments
-            or <Link href="/contact" className="underline font-semibold">contact us</Link> for
-            an immediate quote.
+            Notre catalogue est temporairement indisponible. Veuillez réessayer dans
+            quelques instants ou <Link href="/contact" className="underline font-semibold">contactez-nous</Link>{" "}
+            pour un devis immédiat.
           </div>
         </section>
       )}
 
       {categories.length > 0 && (
         <section className="container-x py-8">
-          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Shop by Category</h2>
+          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Acheter par catégorie</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {categories.map((c) => (
               <Link key={c.id} href={`/categories/${c.slug}`} className="card p-6 hover:shadow-md transition">
@@ -84,7 +85,7 @@ export default async function HomePage() {
 
       {featured.length > 0 && (
         <section className="container-x py-12">
-          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Featured Products</h2>
+          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Produits mis en avant</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {featured.map((p) => (
               <ProductCard key={p.id} p={p} />

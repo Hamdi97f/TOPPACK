@@ -3,14 +3,14 @@ import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: { default: "TOPPACK — Corrugated Cardboard Boxes", template: "%s | TOPPACK" },
+  title: { default: "TOPPACK — Cartons en carton ondulé", template: "%s | TOPPACK" },
   description:
-    "TOPPACK manufactures and sells high-quality corrugated cardboard boxes — single wall, double wall, mailer and custom printed packaging.",
+    "TOPPACK fabrique et vend des cartons ondulés de haute qualité — simple cannelure, double cannelure, enveloppes d'expédition et emballages personnalisés.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body>
         <Providers>{children}</Providers>
       </body>

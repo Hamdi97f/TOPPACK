@@ -35,18 +35,18 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ i
     <div className="container-x py-10 max-w-2xl mx-auto">
       <div className="card p-8 text-center">
         <div className="text-5xl mb-2">✅</div>
-        <h1 className="text-2xl font-bold text-kraft-900">Thank you for your order!</h1>
+        <h1 className="text-2xl font-bold text-kraft-900">Merci pour votre commande !</h1>
         <p className="text-kraft-700 mt-2">
-          Your order reference is <span className="font-mono font-semibold">{order.id}</span>.
+          Votre référence de commande est <span className="font-mono font-semibold">{order.id}</span>.
         </p>
         {order.customer_email && (
           <p className="text-sm text-kraft-600 mt-1">
-            A confirmation has been sent to <strong>{order.customer_email}</strong>.
+            Une confirmation a été envoyée à <strong>{order.customer_email}</strong>.
           </p>
         )}
       </div>
       <div className="card p-6 mt-6">
-        <h2 className="font-bold mb-3">Order Details</h2>
+        <h2 className="font-bold mb-3">Détails de la commande</h2>
         <ul className="space-y-2 text-sm">
           {order.order_items.map((i, idx) => {
             const p = productById.get(i.product_id);
@@ -63,11 +63,11 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ i
           <span>Total</span>
           <span>{formatPrice(Number(order.total))}</span>
         </div>
-        <div className="text-sm text-kraft-600 mt-3">Payment: {paymentMethodLabel(paymentMethod)}</div>
-        <div className="text-sm text-kraft-600">Status: {statusLabel(order.status)}</div>
+        <div className="text-sm text-kraft-600 mt-3">Paiement : {paymentMethodLabel(paymentMethod)}</div>
+        <div className="text-sm text-kraft-600">Statut : {statusLabel(order.status)}</div>
       </div>
       <div className="text-center mt-6">
-        <Link href="/products" className="btn-primary">Continue Shopping</Link>
+        <Link href="/products" className="btn-primary">Continuer mes achats</Link>
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Invalid email or password");
+      setError("E-mail ou mot de passe invalide");
       return;
     }
     router.push(callbackUrl);
@@ -33,21 +33,21 @@ function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="card p-6 max-w-md mx-auto mt-12 space-y-4">
-      <h1 className="text-2xl font-bold text-kraft-900">Sign in</h1>
+      <h1 className="text-2xl font-bold text-kraft-900">Connexion</h1>
       {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
       <div>
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label" htmlFor="email">E-mail</label>
         <input id="email" name="email" type="email" required className="input" autoComplete="email" />
       </div>
       <div>
-        <label className="label" htmlFor="password">Password</label>
+        <label className="label" htmlFor="password">Mot de passe</label>
         <input id="password" name="password" type="password" required className="input" autoComplete="current-password" />
       </div>
       <button type="submit" className="btn-primary w-full" disabled={loading}>
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? "Connexion en cours…" : "Se connecter"}
       </button>
       <p className="text-sm text-kraft-700 text-center">
-        Don&apos;t have an account? <Link href="/register" className="text-kraft-800 underline">Register</Link>
+        Pas encore de compte ? <Link href="/register" className="text-kraft-800 underline">S&apos;inscrire</Link>
       </p>
     </form>
   );

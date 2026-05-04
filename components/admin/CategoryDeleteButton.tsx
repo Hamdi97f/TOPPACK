@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { readJsonOrSignOut } from "@/lib/client-fetch";
 
 export function CategoryDeleteButton({ id }: { id: string }) {
   const router = useRouter();
@@ -12,16 +13,20 @@ export function CategoryDeleteButton({ id }: { id: string }) {
       className="text-red-600 hover:underline text-sm disabled:opacity-50"
       disabled={loading}
       onClick={async () => {
-        if (!confirm("Delete this category?")) return;
+        if (!confirm("Supprimer cette catégorie ?")) return;
         setLoading(true);
-        const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
-        const data = await res.json().catch(() => ({}));
-        setLoading(false);
-        if (!res.ok) { alert(data.error || "Delete failed"); return; }
-        router.refresh();
+        try {
+          const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
+          await readJsonOrSignOut(res);
+          router.refresh();
+        } catch (err) {
+          alert(err instanceof Error ? err.message : "Échec de la suppression");
+        } finally {
+          setLoading(false);
+        }
       }}
     >
-      Delete
+      Supprimer
     </button>
   );
 }

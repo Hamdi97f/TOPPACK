@@ -47,22 +47,22 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <aside className="card p-4 h-fit">
         <form className="space-y-4" method="get">
           <div>
-            <label className="label" htmlFor="q">Search</label>
-            <input id="q" name="q" defaultValue={q} className="input" placeholder="Box, SKU…" />
+            <label className="label" htmlFor="q">Recherche</label>
+            <input id="q" name="q" defaultValue={q} className="input" placeholder="Carton, référence…" />
           </div>
           <div>
-            <label className="label" htmlFor="category">Category</label>
+            <label className="label" htmlFor="category">Catégorie</label>
             <select id="category" name="category" defaultValue={category} className="select">
-              <option value="">All categories</option>
+              <option value="">Toutes les catégories</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.slug}>{c.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="wall">Wall type</label>
+            <label className="label" htmlFor="wall">Type de cannelure</label>
             <select id="wall" name="wall" defaultValue={wall} className="select">
-              <option value="">Any</option>
+              <option value="">Tous</option>
               {wallTypes.map((w) => (
                 <option key={w} value={w}>{w}</option>
               ))}
@@ -70,28 +70,28 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="label" htmlFor="min">Min $</label>
+              <label className="label" htmlFor="min">Min</label>
               <input id="min" name="min" type="number" step="0.01" min="0" defaultValue={min} className="input" />
             </div>
             <div>
-              <label className="label" htmlFor="max">Max $</label>
+              <label className="label" htmlFor="max">Max</label>
               <input id="max" name="max" type="number" step="0.01" min="0" defaultValue={max} className="input" />
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="btn-primary flex-1">Apply</button>
-            <Link href="/products" className="btn-secondary">Reset</Link>
+            <button type="submit" className="btn-primary flex-1">Appliquer</button>
+            <Link href="/products" className="btn-secondary">Réinitialiser</Link>
           </div>
         </form>
       </aside>
       <section>
-        <h1 className="text-2xl font-bold text-kraft-900 mb-4">All Products</h1>
+        <h1 className="text-2xl font-bold text-kraft-900 mb-4">Tous les produits</h1>
         {apiError ? (
           <div className="card p-8 text-center text-amber-900 bg-amber-50 border border-amber-300">
-            Our catalog is temporarily unavailable. Please try again shortly.
+            Notre catalogue est temporairement indisponible. Veuillez réessayer sous peu.
           </div>
         ) : products.length === 0 ? (
-          <div className="card p-8 text-center text-kraft-600">No products match your filters.</div>
+          <div className="card p-8 text-center text-kraft-600">Aucun produit ne correspond à vos filtres.</div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {products.map((p) => (

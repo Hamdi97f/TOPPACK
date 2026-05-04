@@ -17,14 +17,14 @@ export function Header() {
           TOPPACK
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link href="/products" className="hover:text-kraft-700">Shop</Link>
-          <Link href="/categories" className="hover:text-kraft-700">Categories</Link>
-          <Link href="/about" className="hover:text-kraft-700">About</Link>
+          <Link href="/products" className="hover:text-kraft-700">Boutique</Link>
+          <Link href="/categories" className="hover:text-kraft-700">Catégories</Link>
+          <Link href="/about" className="hover:text-kraft-700">À propos</Link>
           <Link href="/contact" className="hover:text-kraft-700">Contact</Link>
         </nav>
         <div className="flex items-center gap-3 text-sm">
-          <Link href="/cart" className="relative px-2 py-1 hover:text-kraft-700" aria-label="Cart">
-            🛒 Cart
+          <Link href="/cart" className="relative px-2 py-1 hover:text-kraft-700" aria-label="Panier">
+            🛒 Panier
             {count > 0 && (
               <span className="ml-1 inline-block bg-kraft-700 text-white rounded-full px-2 text-xs">
                 {count}
@@ -36,15 +36,15 @@ export function Header() {
               {isAdmin && (
                 <Link href="/admin" className="btn-secondary !py-1 !px-3 text-xs">Admin</Link>
               )}
-              <Link href="/account" className="hover:text-kraft-700 hidden sm:inline">Account</Link>
+              <Link href="/account" className="hover:text-kraft-700 hidden sm:inline">Mon compte</Link>
               <button onClick={() => signOut({ callbackUrl: "/" })} className="hover:text-kraft-700">
-                Sign out
+                Déconnexion
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="hover:text-kraft-700">Login</Link>
-              <Link href="/register" className="btn-primary !py-1 !px-3 text-xs">Register</Link>
+              <Link href="/login" className="hover:text-kraft-700">Connexion</Link>
+              <Link href="/register" className="btn-primary !py-1 !px-3 text-xs">S&apos;inscrire</Link>
             </>
           )}
         </div>

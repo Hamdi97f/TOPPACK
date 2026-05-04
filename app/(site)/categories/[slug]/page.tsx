@@ -23,7 +23,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       {category.description && <p className="text-kraft-700 mt-1">{category.description}</p>}
       <div className="mt-6">
         {products.length === 0 ? (
-          <div className="card p-8 text-center text-kraft-600">No products yet.</div>
+          <div className="card p-8 text-center text-kraft-600">Aucun produit pour le moment.</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map((p) => (
