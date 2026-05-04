@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { ProductCard } from "@/components/ProductCard";
 
 export const dynamic = "force-dynamic";
@@ -8,36 +8,39 @@ type SearchParams = { q?: string; category?: string; wall?: string; min?: string
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { q, category, wall, min, max } = await searchParams;
-  const where: Record<string, unknown> = { isActive: true };
-  if (q) where.OR = [
-    { name: { contains: q } },
-    { description: { contains: q } },
-    { sku: { contains: q } },
-  ];
-  if (category) where.category = { slug: category };
-  if (wall) where.wallType = wall;
-  const priceFilter: Record<string, number> = {};
-  if (min) priceFilter.gte = Number(min);
-  if (max) priceFilter.lte = Number(max);
-  if (Object.keys(priceFilter).length) where.price = priceFilter;
 
-  let products: Awaited<ReturnType<typeof prisma.product.findMany>> = [];
-  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = [];
-  let wallTypes: string[] = [];
-  let dbError = false;
+  let allProducts: ReturnType<typeof adaptProduct>[] = [];
+  let categories: ReturnType<typeof adaptCategory>[] = [];
+  let apiError = false;
   try {
-    const [p, c, wallTypesRaw] = await Promise.all([
-      prisma.product.findMany({ where, orderBy: { createdAt: "desc" } }),
-      prisma.category.findMany({ orderBy: { name: "asc" } }),
-      prisma.product.findMany({ where: { isActive: true }, distinct: ["wallType"], select: { wallType: true } }),
-    ]);
-    products = p;
-    categories = c;
-    wallTypes = wallTypesRaw.map((p) => p.wallType).sort();
+    const [p, c] = await Promise.all([apiClient.listProducts(), apiClient.listCategories()]);
+    allProducts = p.map(adaptProduct).filter((x) => x.isActive);
+    categories = c.map(adaptCategory);
   } catch (err) {
-    console.error("[products] failed to load data from database:", err);
-    dbError = true;
+    console.error("[products] failed to load data from api-gateway:", err);
+    apiError = true;
   }
+
+  const categoriesById = new Map(categories.map((c) => [c.id, c]));
+  const minNum = min ? Number(min) : null;
+  const maxNum = max ? Number(max) : null;
+  const qLower = q?.toLowerCase().trim();
+  const products = allProducts.filter((p) => {
+    if (qLower) {
+      const haystack = `${p.name} ${p.description} ${p.sku}`.toLowerCase();
+      if (!haystack.includes(qLower)) return false;
+    }
+    if (category) {
+      const c = p.categoryId ? categoriesById.get(p.categoryId) : null;
+      if (!c || c.slug !== category) return false;
+    }
+    if (wall && p.wallType !== wall) return false;
+    if (minNum !== null && Number.isFinite(minNum) && p.price < minNum) return false;
+    if (maxNum !== null && Number.isFinite(maxNum) && p.price > maxNum) return false;
+    return true;
+  });
+
+  const wallTypes = Array.from(new Set(allProducts.map((p) => p.wallType).filter(Boolean))).sort();
 
   return (
     <div className="container-x py-8 grid md:grid-cols-[16rem_1fr] gap-6">
@@ -83,7 +86,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </aside>
       <section>
         <h1 className="text-2xl font-bold text-kraft-900 mb-4">All Products</h1>
-        {dbError ? (
+        {apiError ? (
           <div className="card p-8 text-center text-amber-900 bg-amber-50 border border-amber-300">
             Our catalog is temporarily unavailable. Please try again shortly.
           </div>

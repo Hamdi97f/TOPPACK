@@ -1,20 +1,15 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { timingSafeEqual } from "crypto";
-import { prisma } from "./prisma";
+import { apiClient, ApiError } from "./api-client";
 
 /**
- * Constant-time string comparison to avoid timing attacks when
- * comparing plain-text credentials from environment variables.
+ * NextAuth is kept as the session/cookie layer; the credentials provider
+ * delegates authentication to the api-gateway webapp's `POST /login`.
+ *
+ * The bearer token issued by `/login` is stashed in the JWT (`apiToken`) and
+ * later replayed by server-side calls (admin proxies, account pages…) so that
+ * we never need to ask the user for their password again.
  */
-function safeEqual(a: string, b: string): boolean {
-  const aBuf = Buffer.from(a);
-  const bBuf = Buffer.from(b);
-  if (aBuf.length !== bBuf.length) return false;
-  return timingSafeEqual(aBuf, bBuf);
-}
-
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
@@ -28,35 +23,18 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const email = credentials.email.toLowerCase().trim();
-
-        // 1) Environment-based admin fallback.
-        //    If ADMIN_EMAIL and ADMIN_PASSWORD are configured (e.g. as Netlify
-        //    environment variables), allow that account to sign in as ADMIN
-        //    without requiring a seeded database. This makes the admin usable
-        //    on a fresh deployment and survives even if the database is
-        //    temporarily unreachable.
-        const envEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
-        const envPassword = process.env.ADMIN_PASSWORD;
-        if (envEmail && envPassword && safeEqual(email, envEmail) && safeEqual(credentials.password, envPassword)) {
-          return {
-            id: "env-admin",
-            name: process.env.ADMIN_NAME || "TOPPACK Admin",
-            email: envEmail,
-            role: "ADMIN",
-          };
-        }
-
-        // 2) Database-backed users (customers and any DB-stored admins).
         try {
-          const user = await prisma.user.findUnique({ where: { email } });
-          if (!user || !user.isActive) return null;
-          const ok = await bcrypt.compare(credentials.password, user.passwordHash);
-          if (!ok) return null;
-          return { id: user.id, name: user.name, email: user.email, role: user.role };
+          const res = await apiClient.login(email, credentials.password);
+          return {
+            id: res.user_id,
+            email: res.email,
+            name: res.email,
+            role: res.is_admin ? "ADMIN" : "CUSTOMER",
+            apiToken: res.token,
+          };
         } catch (err) {
-          // Database unavailable or misconfigured — log and deny rather than
-          // surfacing a 500 from NextAuth. The env-admin path above still works.
-          console.error("[auth] database lookup failed:", err);
+          if (err instanceof ApiError && err.status >= 400 && err.status < 500) return null;
+          console.error("[auth] login failed:", err);
           return null;
         }
       },
@@ -65,15 +43,18 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = (user as { id: string }).id;
-        token.role = (user as { role: string }).role;
+        const u = user as { id: string; role: string; apiToken: string };
+        token.id = u.id;
+        token.role = u.role;
+        token.apiToken = u.apiToken;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string }).id = token.id as string;
-        (session.user as { role?: string }).role = token.role as string;
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.apiToken = token.apiToken as string;
       }
       return session;
     },

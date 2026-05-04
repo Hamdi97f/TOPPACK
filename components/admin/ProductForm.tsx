@@ -2,11 +2,30 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Category, Product } from "@prisma/client";
 
-type Mode = { kind: "create" } | { kind: "edit"; product: Product };
+export type ProductFormProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  sku: string;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+  wallType: string;
+  price: number;
+  stock: number;
+  imageUrl: string | null;
+  isActive: boolean;
+  isFeatured: boolean;
+  categoryId: string | null;
+};
 
-export function ProductForm({ categories, mode }: { categories: Category[]; mode: Mode }) {
+export type ProductFormCategory = { id: string; name: string };
+
+type Mode = { kind: "create" } | { kind: "edit"; product: ProductFormProduct };
+
+export function ProductForm({ categories, mode }: { categories: ProductFormCategory[]; mode: Mode }) {
   const router = useRouter();
   const isEdit = mode.kind === "edit";
   const initial = isEdit ? mode.product : null;
@@ -49,7 +68,7 @@ export function ProductForm({ categories, mode }: { categories: Category[]; mode
       isFeatured: fd.get("isFeatured") === "on",
       imageUrl: imageUrl || null,
     };
-    const url = isEdit ? `/api/admin/products/${(mode as { kind: "edit"; product: Product }).product.id}` : "/api/admin/products";
+    const url = isEdit ? `/api/admin/products/${(mode as { kind: "edit"; product: ProductFormProduct }).product.id}` : "/api/admin/products";
     const method = isEdit ? "PUT" : "POST";
     const res = await fetch(url, {
       method,

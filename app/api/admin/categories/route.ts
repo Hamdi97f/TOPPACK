@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { apiClient, ApiError } from "@/lib/api-client";
 import { categorySchema } from "@/lib/validators";
 
 export async function GET() {
-  const { response } = await requireAdmin();
-  if (response) return response;
-  const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json({ categories });
+  const { session, response } = await requireAdmin();
+  if (response || !session) return response!;
+  try {
+    const categories = await apiClient.listCategories(session.user.apiToken);
+    return NextResponse.json({ categories });
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 500;
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status });
+  }
 }
 
 export async function POST(req: Request) {
-  const { response } = await requireAdmin();
-  if (response) return response;
+  const { session, response } = await requireAdmin();
+  if (response || !session) return response!;
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   const parsed = categorySchema.safeParse(body);
@@ -20,9 +25,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid data" }, { status: 400 });
   }
   try {
-    const category = await prisma.category.create({ data: parsed.data });
+    const category = await apiClient.createCategory(session.user.apiToken, {
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+    });
     return NextResponse.json({ category }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 500;
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status });
   }
 }

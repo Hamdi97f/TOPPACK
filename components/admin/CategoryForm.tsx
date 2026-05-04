@@ -2,9 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Category } from "@prisma/client";
 
-type Mode = { kind: "create" } | { kind: "edit"; category: Category };
+export type CategoryFormCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+};
+
+type Mode = { kind: "create" } | { kind: "edit"; category: CategoryFormCategory };
 
 export function CategoryForm({ mode }: { mode: Mode }) {
   const router = useRouter();
@@ -19,11 +25,10 @@ export function CategoryForm({ mode }: { mode: Mode }) {
     setSubmitting(true);
     const fd = new FormData(e.currentTarget);
     const payload = {
-      name: fd.get("name"),
-      slug: fd.get("slug"),
-      description: fd.get("description") || null,
+      name: String(fd.get("name") || ""),
+      description: (fd.get("description") as string) || null,
     };
-    const url = isEdit ? `/api/admin/categories/${(mode as { kind: "edit"; category: Category }).category.id}` : "/api/admin/categories";
+    const url = isEdit ? `/api/admin/categories/${(mode as { kind: "edit"; category: CategoryFormCategory }).category.id}` : "/api/admin/categories";
     const method = isEdit ? "PUT" : "POST";
     const res = await fetch(url, {
       method,
@@ -43,10 +48,6 @@ export function CategoryForm({ mode }: { mode: Mode }) {
       <div>
         <label className="label" htmlFor="name">Name</label>
         <input id="name" name="name" required defaultValue={initial?.name} className="input" />
-      </div>
-      <div>
-        <label className="label" htmlFor="slug">Slug</label>
-        <input id="slug" name="slug" required pattern="[a-z0-9\-]+" defaultValue={initial?.slug} className="input" />
       </div>
       <div>
         <label className="label" htmlFor="description">Description</label>
