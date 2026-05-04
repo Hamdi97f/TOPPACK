@@ -36,12 +36,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
         <table className="mt-6 w-full text-sm card overflow-hidden">
           <tbody>
-            {product.sku && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">SKU</td><td className="p-2">{product.sku}</td></tr>}
-            {product.wallType && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Wall Type</td><td className="p-2">{product.wallType}</td></tr>}
-            {product.lengthCm > 0 && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Length</td><td className="p-2">{product.lengthCm} cm</td></tr>}
-            {product.widthCm > 0 && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Width</td><td className="p-2">{product.widthCm} cm</td></tr>}
-            {product.heightCm > 0 && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Height</td><td className="p-2">{product.heightCm} cm</td></tr>}
-            <tr><td className="p-2 font-medium text-kraft-700">Stock</td><td className="p-2">{product.stock > 0 ? `${product.stock} available` : "Out of stock"}</td></tr>
+            {product.sku && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Référence</td><td className="p-2">{product.sku}</td></tr>}
+            {product.wallType && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Type de cannelure</td><td className="p-2">{product.wallType}</td></tr>}
+            {product.lengthCm > 0 && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Longueur</td><td className="p-2">{product.lengthCm} cm</td></tr>}
+            {product.widthCm > 0 && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Largeur</td><td className="p-2">{product.widthCm} cm</td></tr>}
+            {product.heightCm > 0 && <tr className="border-b border-kraft-100"><td className="p-2 font-medium text-kraft-700">Hauteur</td><td className="p-2">{product.heightCm} cm</td></tr>}
+            <tr><td className="p-2 font-medium text-kraft-700">Stock</td><td className="p-2">{product.stock > 0 ? `${product.stock} disponibles` : "Rupture de stock"}</td></tr>
           </tbody>
         </table>
 

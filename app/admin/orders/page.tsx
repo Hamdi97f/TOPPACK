@@ -21,24 +21,24 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     .slice(0, 200);
   return (
     <div>
-      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Orders</h1>
+      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Commandes</h1>
       <form className="mb-4 flex items-center gap-2">
-        <label htmlFor="status" className="text-sm">Status:</label>
+        <label htmlFor="status" className="text-sm">Statut :</label>
         <select id="status" name="status" defaultValue={status ?? ""} className="select max-w-xs">
-          <option value="">All</option>
+          <option value="">Tous</option>
           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
         </select>
-        <button type="submit" className="btn-secondary !py-1 !px-3 text-sm">Filter</button>
+        <button type="submit" className="btn-secondary !py-1 !px-3 text-sm">Filtrer</button>
       </form>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
-              <th className="text-left p-2">Reference</th>
-              <th className="text-left p-2">Customer</th>
+              <th className="text-left p-2">Référence</th>
+              <th className="text-left p-2">Client</th>
               <th className="text-left p-2">Date</th>
               <th className="text-right p-2">Total</th>
-              <th className="text-left p-2">Status</th>
+              <th className="text-left p-2">Statut</th>
             </tr>
           </thead>
           <tbody>
@@ -46,13 +46,13 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
               <tr key={o.id} className="border-t border-kraft-100">
                 <td className="p-2"><Link href={`/admin/orders/${o.id}`} className="font-mono hover:text-kraft-700">{o.id}</Link></td>
                 <td className="p-2">{o.customer_name ?? "—"}<div className="text-xs text-kraft-600">{o.customer_email ?? ""}</div></td>
-                <td className="p-2">{o.created_at ? new Date(o.created_at).toLocaleString() : "—"}</td>
+                <td className="p-2">{o.created_at ? new Date(o.created_at).toLocaleString("fr-FR") : "—"}</td>
                 <td className="p-2 text-right">{formatPrice(Number(o.total))}</td>
                 <td className="p-2"><span className="badge bg-kraft-200 text-kraft-800">{statusLabel(o.status)}</span></td>
               </tr>
             ))}
             {orders.length === 0 && (
-              <tr><td colSpan={5} className="p-6 text-center text-kraft-600">No orders found.</td></tr>
+              <tr><td colSpan={5} className="p-6 text-center text-kraft-600">Aucune commande trouvée.</td></tr>
             )}
           </tbody>
         </table>

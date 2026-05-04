@@ -16,7 +16,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ i
   const category = adaptCategory(raw);
   return (
     <div>
-      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Edit Category</h1>
+      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Modifier la catégorie</h1>
       <CategoryForm mode={{ kind: "edit", category }} />
     </div>
   );

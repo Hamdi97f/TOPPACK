@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ORDER_STATUSES } from "@/lib/utils";
+import { ORDER_STATUSES, statusLabel } from "@/lib/utils";
+import { readJsonOrSignOut } from "@/lib/client-fetch";
 
 export function OrderStatusForm({ id, status }: { id: string; status: string }) {
   const router = useRouter();
@@ -11,18 +12,20 @@ export function OrderStatusForm({ id, status }: { id: string; status: string }) 
 
   async function save(next: string) {
     setSaving(true);
-    const res = await fetch(`/api/admin/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: next }),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      alert("Update failed");
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      await readJsonOrSignOut(res);
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Échec de la mise à jour");
       setValue(status);
-      return;
+    } finally {
+      setSaving(false);
     }
-    router.refresh();
   }
 
   return (
@@ -32,7 +35,7 @@ export function OrderStatusForm({ id, status }: { id: string; status: string }) 
       disabled={saving}
       onChange={(e) => { setValue(e.target.value); save(e.target.value); }}
     >
-      {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+      {ORDER_STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
     </select>
   );
 }

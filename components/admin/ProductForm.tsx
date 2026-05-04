@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { readJsonOrSignOut } from "@/lib/client-fetch";
 
 export type ProductFormProduct = {
   id: string;
@@ -40,11 +41,15 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
     const fd = new FormData();
     fd.append("file", file);
     setUploading(true);
-    const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    setUploading(false);
-    if (!res.ok) { alert(data.error || "Upload failed"); return; }
-    setImageUrl(data.url);
+    try {
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const data = await readJsonOrSignOut<{ url: string }>(res);
+      setImageUrl(data.url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Échec du téléversement");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -70,16 +75,19 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
     };
     const url = isEdit ? `/api/admin/products/${(mode as { kind: "edit"; product: ProductFormProduct }).product.id}` : "/api/admin/products";
     const method = isEdit ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-    if (!res.ok) { setError(data.error || "Save failed"); return; }
-    router.push("/admin/products");
-    router.refresh();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      await readJsonOrSignOut(res);
+      router.push("/admin/products");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de l'enregistrement");
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -87,30 +95,30 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
       {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <label className="label" htmlFor="name">Name</label>
+          <label className="label" htmlFor="name">Nom</label>
           <input id="name" name="name" required defaultValue={initial?.name} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="slug">Slug</label>
+          <label className="label" htmlFor="slug">Identifiant URL (slug)</label>
           <input id="slug" name="slug" required pattern="[a-z0-9\-]+" defaultValue={initial?.slug} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="sku">SKU</label>
+          <label className="label" htmlFor="sku">Référence (SKU)</label>
           <input id="sku" name="sku" required defaultValue={initial?.sku} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="categoryId">Category</label>
+          <label className="label" htmlFor="categoryId">Catégorie</label>
           <select id="categoryId" name="categoryId" required defaultValue={initial?.categoryId ?? ""} className="select">
-            <option value="" disabled>Select…</option>
+            <option value="" disabled>Sélectionner…</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="wallType">Wall Type</label>
-          <input id="wallType" name="wallType" required defaultValue={initial?.wallType ?? "Single Wall"} className="input" />
+          <label className="label" htmlFor="wallType">Type de cannelure</label>
+          <input id="wallType" name="wallType" required defaultValue={initial?.wallType ?? "Simple cannelure"} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="price">Price (USD)</label>
+          <label className="label" htmlFor="price">Prix (USD)</label>
           <input id="price" name="price" type="number" step="0.01" min="0" required defaultValue={initial?.price ?? ""} className="input" />
         </div>
         <div>
@@ -118,15 +126,15 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
           <input id="stock" name="stock" type="number" min="0" required defaultValue={initial?.stock ?? 0} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="lengthCm">Length (cm)</label>
+          <label className="label" htmlFor="lengthCm">Longueur (cm)</label>
           <input id="lengthCm" name="lengthCm" type="number" step="0.1" min="0" required defaultValue={initial?.lengthCm ?? ""} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="widthCm">Width (cm)</label>
+          <label className="label" htmlFor="widthCm">Largeur (cm)</label>
           <input id="widthCm" name="widthCm" type="number" step="0.1" min="0" required defaultValue={initial?.widthCm ?? ""} className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="heightCm">Height (cm)</label>
+          <label className="label" htmlFor="heightCm">Hauteur (cm)</label>
           <input id="heightCm" name="heightCm" type="number" step="0.1" min="0" required defaultValue={initial?.heightCm ?? ""} className="input" />
         </div>
       </div>
@@ -141,19 +149,19 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
           <img src={imageUrl} alt="" className="w-32 h-32 object-cover rounded mb-2" />
         )}
         <input type="file" accept="image/*" onChange={onUpload} disabled={uploading} />
-        {uploading && <div className="text-xs text-kraft-600 mt-1">Uploading…</div>}
+        {uploading && <div className="text-xs text-kraft-600 mt-1">Téléversement…</div>}
       </div>
       <div className="flex gap-6">
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="isActive" defaultChecked={initial?.isActive ?? true} /> Active
+          <input type="checkbox" name="isActive" defaultChecked={initial?.isActive ?? true} /> Actif
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="isFeatured" defaultChecked={initial?.isFeatured ?? false} /> Featured
+          <input type="checkbox" name="isFeatured" defaultChecked={initial?.isFeatured ?? false} /> Mis en avant
         </label>
       </div>
       <div className="flex gap-2">
         <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? "Saving…" : isEdit ? "Save Changes" : "Create Product"}
+          {submitting ? "Enregistrement…" : isEdit ? "Enregistrer les modifications" : "Créer le produit"}
         </button>
       </div>
     </form>

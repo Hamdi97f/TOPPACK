@@ -15,9 +15,9 @@ export default async function AccountOrdersPage() {
 
   return (
     <div className="container-x py-8 max-w-3xl">
-      <h1 className="text-2xl font-bold text-kraft-900 mb-4">My Orders</h1>
+      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Mes commandes</h1>
       {orders.length === 0 ? (
-        <div className="card p-6 text-center text-kraft-600">No orders yet.</div>
+        <div className="card p-6 text-center text-kraft-600">Aucune commande pour le moment.</div>
       ) : (
         <div className="card divide-y divide-kraft-100">
           {orders.map((o) => (

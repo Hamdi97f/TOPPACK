@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/orders", label: "Orders" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/categories", label: "Categories" },
+  { href: "/admin", label: "Tableau de bord" },
+  { href: "/admin/orders", label: "Commandes" },
+  { href: "/admin/products", label: "Produits" },
+  { href: "/admin/categories", label: "Catégories" },
 ];
 
 export function AdminSidebar() {

@@ -1,16 +1,18 @@
 export default function AboutPage() {
   return (
     <div className="container-x py-12 max-w-3xl prose-kraft">
-      <h1 className="text-3xl font-bold text-kraft-900">About TOPPACK</h1>
+      <h1 className="text-3xl font-bold text-kraft-900">À propos de TOPPACK</h1>
       <p className="mt-4 text-kraft-800">
-        TOPPACK manufactures high-quality corrugated cardboard boxes for businesses of every
-        size. From single-wall mailers to heavy-duty double-wall shipping containers and
-        fully custom-printed retail packaging, we help our customers move their products
-        safely and beautifully.
+        TOPPACK fabrique des cartons en carton ondulé de haute qualité pour les
+        entreprises de toutes tailles. Des enveloppes simple cannelure aux conteneurs
+        d&apos;expédition double cannelure robustes, en passant par les emballages de
+        vente personnalisés, nous aidons nos clients à transporter leurs produits en
+        toute sécurité et avec élégance.
       </p>
       <p className="mt-4 text-kraft-800">
-        With decades of combined manufacturing experience, our team is committed to fast
-        turnaround, fair prices, and sustainable materials.
+        Forte de décennies d&apos;expérience cumulée dans la fabrication, notre équipe
+        s&apos;engage à offrir des délais rapides, des prix justes et des matériaux
+        durables.
       </p>
     </div>
   );

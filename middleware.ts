@@ -12,7 +12,13 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token || token.role !== "ADMIN") {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Votre session a expiré. Veuillez vous reconnecter pour continuer.",
+          code: "SESSION_EXPIRED",
+        },
+        { status: 401 }
+      );
     }
     const url = req.nextUrl.clone();
     url.pathname = "/login";

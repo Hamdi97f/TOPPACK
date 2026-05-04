@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { readJsonOrSignOut } from "@/lib/client-fetch";
 
 export type CategoryFormCategory = {
   id: string;
@@ -30,23 +31,26 @@ export function CategoryForm({ mode }: { mode: Mode }) {
     };
     const url = isEdit ? `/api/admin/categories/${(mode as { kind: "edit"; category: CategoryFormCategory }).category.id}` : "/api/admin/categories";
     const method = isEdit ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-    if (!res.ok) { setError(data.error || "Save failed"); return; }
-    router.push("/admin/categories");
-    router.refresh();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      await readJsonOrSignOut(res);
+      router.push("/admin/categories");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de l'enregistrement");
+      setSubmitting(false);
+    }
   }
 
   return (
     <form onSubmit={onSubmit} className="card p-6 space-y-4 max-w-xl">
       {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
       <div>
-        <label className="label" htmlFor="name">Name</label>
+        <label className="label" htmlFor="name">Nom</label>
         <input id="name" name="name" required defaultValue={initial?.name} className="input" />
       </div>
       <div>
@@ -54,7 +58,7 @@ export function CategoryForm({ mode }: { mode: Mode }) {
         <textarea id="description" name="description" rows={3} defaultValue={initial?.description ?? ""} className="textarea" />
       </div>
       <button type="submit" className="btn-primary" disabled={submitting}>
-        {submitting ? "Saving…" : isEdit ? "Save Changes" : "Create Category"}
+        {submitting ? "Enregistrement…" : isEdit ? "Enregistrer les modifications" : "Créer la catégorie"}
       </button>
     </form>
   );

@@ -41,11 +41,11 @@ export default function CheckoutPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to place order");
+      if (!res.ok) throw new Error(data.error || "Échec de la commande");
       clear();
       router.push(`/orders/${data.id}/confirmation`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to place order");
+      setError(err instanceof Error ? err.message : "Échec de la commande");
       setSubmitting(false);
     }
   }
@@ -55,63 +55,63 @@ export default function CheckoutPage() {
   return (
     <div className="container-x py-8 grid lg:grid-cols-[1fr_22rem] gap-6">
       <form onSubmit={onSubmit} className="card p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-kraft-900">Checkout</h1>
+        <h1 className="text-2xl font-bold text-kraft-900">Commande</h1>
         {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label" htmlFor="customerName">Full Name</label>
+            <label className="label" htmlFor="customerName">Nom complet</label>
             <input id="customerName" name="customerName" required defaultValue={session?.user?.name ?? ""} className="input" />
           </div>
           <div>
-            <label className="label" htmlFor="customerEmail">Email</label>
+            <label className="label" htmlFor="customerEmail">E-mail</label>
             <input id="customerEmail" name="customerEmail" type="email" required defaultValue={session?.user?.email ?? ""} className="input" />
           </div>
           <div>
-            <label className="label" htmlFor="customerPhone">Phone</label>
+            <label className="label" htmlFor="customerPhone">Téléphone</label>
             <input id="customerPhone" name="customerPhone" required className="input" />
           </div>
           <div>
-            <label className="label" htmlFor="country">Country</label>
-            <input id="country" name="country" required defaultValue="United States" className="input" />
+            <label className="label" htmlFor="country">Pays</label>
+            <input id="country" name="country" required defaultValue="France" className="input" />
           </div>
           <div className="md:col-span-2">
-            <label className="label" htmlFor="addressLine">Address</label>
+            <label className="label" htmlFor="addressLine">Adresse</label>
             <input id="addressLine" name="addressLine" required className="input" />
           </div>
           <div>
-            <label className="label" htmlFor="city">City</label>
+            <label className="label" htmlFor="city">Ville</label>
             <input id="city" name="city" required className="input" />
           </div>
           <div>
-            <label className="label" htmlFor="postalCode">Postal Code</label>
+            <label className="label" htmlFor="postalCode">Code postal</label>
             <input id="postalCode" name="postalCode" required className="input" />
           </div>
           <div className="md:col-span-2">
-            <label className="label" htmlFor="notes">Notes (optional)</label>
+            <label className="label" htmlFor="notes">Notes (facultatif)</label>
             <textarea id="notes" name="notes" rows={3} className="textarea" />
           </div>
         </div>
 
         <fieldset>
-          <legend className="label">Payment Method</legend>
+          <legend className="label">Mode de paiement</legend>
           <label className="flex items-center gap-2 p-3 card cursor-pointer mb-2">
             <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" defaultChecked required />
-            <span>Cash on Delivery</span>
+            <span>Paiement à la livraison</span>
           </label>
           <label className="flex items-center gap-2 p-3 card cursor-pointer">
             <input type="radio" name="paymentMethod" value="BANK_TRANSFER" required />
-            <span>Bank Transfer</span>
+            <span>Virement bancaire</span>
           </label>
         </fieldset>
 
         <button type="submit" className="btn-primary w-full" disabled={submitting}>
-          {submitting ? "Placing order…" : `Place Order — ${formatPrice(subtotal)}`}
+          {submitting ? "Traitement de la commande…" : `Valider la commande — ${formatPrice(subtotal)}`}
         </button>
       </form>
 
       <aside className="card p-6 h-fit">
-        <h2 className="font-bold text-kraft-900 mb-3">Order Summary</h2>
+        <h2 className="font-bold text-kraft-900 mb-3">Récapitulatif</h2>
         <ul className="space-y-2 text-sm">
           {items.map((i) => (
             <li key={i.productId} className="flex justify-between">

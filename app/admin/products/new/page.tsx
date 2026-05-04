@@ -12,7 +12,7 @@ export default async function NewProductPage() {
   const categories = (await apiClient.listCategories(session.user.apiToken).catch(() => [])).map(adaptCategory);
   return (
     <div>
-      <h1 className="text-2xl font-bold text-kraft-900 mb-4">New Product</h1>
+      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Nouveau produit</h1>
       <ProductForm categories={categories} mode={{ kind: "create" }} />
     </div>
   );

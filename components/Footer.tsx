@@ -7,24 +7,25 @@ export function Footer() {
         <div>
           <div className="font-bold text-lg text-white mb-2">TOPPACK</div>
           <p className="text-kraft-200">
-            Quality corrugated cardboard boxes for businesses of every size — single wall,
-            double wall, mailer and custom printed packaging.
+            Cartons en carton ondulé de qualité pour les entreprises de toutes tailles —
+            simple cannelure, double cannelure, enveloppes d&apos;expédition et emballages
+            personnalisés.
           </p>
         </div>
         <div>
-          <div className="font-semibold text-white mb-2">Shop</div>
+          <div className="font-semibold text-white mb-2">Boutique</div>
           <ul className="space-y-1">
-            <li><Link href="/products" className="hover:text-white">All Products</Link></li>
-            <li><Link href="/categories" className="hover:text-white">Categories</Link></li>
-            <li><Link href="/cart" className="hover:text-white">Cart</Link></li>
+            <li><Link href="/products" className="hover:text-white">Tous les produits</Link></li>
+            <li><Link href="/categories" className="hover:text-white">Catégories</Link></li>
+            <li><Link href="/cart" className="hover:text-white">Panier</Link></li>
           </ul>
         </div>
         <div>
-          <div className="font-semibold text-white mb-2">Company</div>
+          <div className="font-semibold text-white mb-2">Entreprise</div>
           <ul className="space-y-1">
-            <li><Link href="/about" className="hover:text-white">About</Link></li>
+            <li><Link href="/about" className="hover:text-white">À propos</Link></li>
             <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
-            <li><Link href="/shipping" className="hover:text-white">Shipping &amp; Returns</Link></li>
+            <li><Link href="/shipping" className="hover:text-white">Livraison &amp; retours</Link></li>
           </ul>
         </div>
         <div>
@@ -34,7 +35,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-kraft-700 py-4 text-center text-xs text-kraft-300">
-        © {new Date().getFullYear()} TOPPACK. All rights reserved.
+        © {new Date().getFullYear()} TOPPACK. Tous droits réservés.
       </div>
     </footer>
   );

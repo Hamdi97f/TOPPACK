@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
-import { apiClient, ApiError } from "@/lib/api-client";
+import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
+import { apiClient } from "@/lib/api-client";
 import { orderStatusUpdateSchema } from "@/lib/validators";
 
 // The api-gateway uses PUT to update orders; we keep PATCH for the existing
@@ -9,10 +9,10 @@ async function updateStatus(req: Request, id: string) {
   const { session, response } = await requireAdmin();
   if (response || !session) return response!;
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "JSON invalide" }, { status: 400 }); }
   const parsed = orderStatusUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    return NextResponse.json({ error: "Statut invalide" }, { status: 400 });
   }
   try {
     const order = await apiClient.updateOrder(session.user.apiToken, id, {
@@ -20,8 +20,7 @@ async function updateStatus(req: Request, id: string) {
     });
     return NextResponse.json({ order });
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Update failed" }, { status });
+    return apiErrorResponse(err, "Échec de la mise à jour de la commande");
   }
 }
 
