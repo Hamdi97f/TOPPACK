@@ -1,42 +1,101 @@
 import Link from "next/link";
 import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { ProductCard } from "@/components/ProductCard";
+import { resolveRegionsFromSettings } from "@/lib/live-edit/editable";
 
 export const revalidate = 60;
 
+const HOME_REGION_IDS = [
+  "home.hero",
+  "home.hero.ctaPrimary",
+  "home.hero.ctaSecondary",
+  "home.values.card1",
+  "home.values.card2",
+  "home.values.card3",
+  "home.categories.heading",
+  "home.featured.heading",
+];
+
 async function loadHomeData() {
   try {
-    const [products, categories] = await Promise.all([
+    const [products, categories, settings] = await Promise.all([
       apiClient.listProducts(),
       apiClient.listCategories(),
+      apiClient.getSiteSettings(),
     ]);
     const featured = products.map(adaptProduct).filter((p) => p.isActive && p.isFeatured).slice(0, 8);
-    return { featured, categories: categories.map(adaptCategory), apiError: false };
+    return {
+      featured,
+      categories: categories.map(adaptCategory),
+      apiError: false,
+      edits: resolveRegionsFromSettings(settings.liveEdits, HOME_REGION_IDS),
+    };
   } catch (err) {
     console.error("[home] failed to load data from api-gateway:", err);
-    return { featured: [], categories: [], apiError: true };
+    return {
+      featured: [],
+      categories: [],
+      apiError: true,
+      edits: resolveRegionsFromSettings({}, HOME_REGION_IDS),
+    };
   }
 }
 
+function alignClass(v: unknown): string {
+  if (v === "center") return "text-center";
+  if (v === "right") return "text-right";
+  return "text-left";
+}
+
 export default async function HomePage() {
-  const { featured, categories, apiError } = await loadHomeData();
+  const { featured, categories, apiError, edits } = await loadHomeData();
+
+  const hero = edits["home.hero"];
+  const ctaPrimary = edits["home.hero.ctaPrimary"];
+  const ctaSecondary = edits["home.hero.ctaSecondary"];
+  const card1 = edits["home.values.card1"];
+  const card2 = edits["home.values.card2"];
+  const card3 = edits["home.values.card3"];
+  const catHeading = edits["home.categories.heading"];
+  const featuredHeading = edits["home.featured.heading"];
 
   return (
     <>
-      <section className="bg-gradient-to-br from-kraft-100 to-kraft-200">
-        <div className="container-x py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
+      <section
+        data-edit-id="home.hero"
+        style={{
+          background: `linear-gradient(135deg, ${hero.bgFromColor} 0%, ${hero.bgToColor} 100%)`,
+        }}
+      >
+        <div
+          className="container-x grid md:grid-cols-2 gap-10 items-center"
+          style={{ paddingTop: `${hero.paddingY}px`, paddingBottom: `${hero.paddingY}px` }}
+        >
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-kraft-900 leading-tight">
-              Cartons en carton ondulé pour toutes les entreprises
+            <h1
+              className="text-4xl md:text-5xl font-bold leading-tight"
+              style={{ color: String(hero.titleColor) }}
+            >
+              {hero.title}
             </h1>
-            <p className="mt-4 text-lg text-kraft-800">
-              Cartons simple cannelure, double cannelure, enveloppes d&apos;expédition et
-              cartons personnalisés — conçus pour une expédition sécurisée et fabriqués
-              selon vos spécifications.
+            <p className="mt-4 text-lg" style={{ color: String(hero.subtitleColor) }}>
+              {hero.subtitle}
             </p>
             <div className="mt-6 flex gap-3">
-              <Link href="/products" className="btn-primary">Acheter des cartons</Link>
-              <Link href="/contact" className="btn-secondary">Demander un devis</Link>
+              <Link
+                data-edit-id="home.hero.ctaPrimary"
+                href={String(ctaPrimary.href)}
+                className="btn-primary"
+              >
+                {ctaPrimary.label}
+              </Link>
+              <Link
+                data-edit-id="home.hero.ctaSecondary"
+                href={String(ctaSecondary.href)}
+                className="btn-secondary"
+              >
+                {ctaSecondary.label}
+              </Link>
             </div>
           </div>
           <div className="hidden md:flex justify-center">
@@ -47,13 +106,13 @@ export default async function HomePage() {
 
       <section className="container-x py-12 grid md:grid-cols-3 gap-6">
         {[
-          { t: "Tailles personnalisées", d: "Fabriqués à vos dimensions exactes et avec la résistance souhaitée." },
-          { t: "Tarifs en gros", d: "Remises sur volume pour les entreprises et les revendeurs." },
-          { t: "Livraison rapide", d: "La plupart des commandes sont expédiées sous 48 heures depuis notre entrepôt." },
-        ].map((v) => (
-          <div key={v.t} className="card p-6">
-            <div className="font-bold text-kraft-800 text-lg">{v.t}</div>
-            <p className="text-sm text-kraft-700 mt-1">{v.d}</p>
+          { id: "home.values.card1", v: card1 },
+          { id: "home.values.card2", v: card2 },
+          { id: "home.values.card3", v: card3 },
+        ].map(({ id, v }) => (
+          <div key={id} data-edit-id={id} className="card p-6">
+            <div className="font-bold text-kraft-800 text-lg">{v.title}</div>
+            <p className="text-sm text-kraft-700 mt-1">{v.description}</p>
           </div>
         ))}
       </section>
@@ -70,7 +129,13 @@ export default async function HomePage() {
 
       {categories.length > 0 && (
         <section className="container-x py-8">
-          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Acheter par catégorie</h2>
+          <h2
+            data-edit-id="home.categories.heading"
+            className={`text-2xl font-bold mb-4 ${alignClass(catHeading.align)}`}
+            style={{ color: String(catHeading.color) }}
+          >
+            {catHeading.text}
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {categories.map((c) => (
               <Link key={c.id} href={`/categories/${c.slug}`} className="card p-6 hover:shadow-md transition">
@@ -85,7 +150,13 @@ export default async function HomePage() {
 
       {featured.length > 0 && (
         <section className="container-x py-12">
-          <h2 className="text-2xl font-bold text-kraft-900 mb-4">Produits mis en avant</h2>
+          <h2
+            data-edit-id="home.featured.heading"
+            className={`text-2xl font-bold mb-4 ${alignClass(featuredHeading.align)}`}
+            style={{ color: String(featuredHeading.color) }}
+          >
+            {featuredHeading.text}
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {featured.map((p) => (
               <ProductCard key={p.id} p={p} />

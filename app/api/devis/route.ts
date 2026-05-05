@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiClient, ApiError, getServiceToken } from "@/lib/api-client";
-import { devisRequestSchema } from "@/lib/validators";
+import { buildDevisRequestSchema } from "@/lib/validators";
 
 /**
  * Public endpoint to submit a "demande de devis" (quote request).
@@ -8,6 +8,10 @@ import { devisRequestSchema } from "@/lib/validators";
  * Anonymous: callers do not need to be logged in. The handler authenticates
  * to the upstream api-gateway with the service account token. The resulting
  * record is stored as a hidden category (see `lib/devis.ts`).
+ *
+ * Validation honours the admin-configured form settings (which fields are
+ * visible/required + the minimum quantity), so the server does not trust
+ * what the client form chose to enforce.
  */
 export async function POST(req: Request) {
   let body: unknown;
@@ -17,7 +21,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  const parsed = devisRequestSchema.safeParse(body);
+  const settings = await apiClient.getSiteSettings();
+  const schema = buildDevisRequestSchema(settings.devis);
+  const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Données invalides" },

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { ORDER_STATUSES, PAYMENT_METHODS } from "./utils";
 import type { CheckoutSettings } from "./checkout-settings";
+import type { DevisFormSettings } from "./site-settings";
+import { getDevisFieldConfig } from "./site-settings";
 import {
   CANNELURE_TYPES,
   CARTON_COLORS,
@@ -148,21 +150,28 @@ export const adminOrderCreateSchema = z.object({
  * loose where it makes sense (the customer doesn't always know exact values)
  * but every input is bounded to keep the upstream payload small and prevent
  * abuse.
+ *
+ * This is the *baseline* schema that does not know about admin settings;
+ * `buildDevisRequestSchema(settings)` returns a stricter schema that honours
+ * the admin-configured visibility/required toggles and the minimum quantity.
  */
 export const devisRequestSchema = z
   .object({
-    customerName: z.string().trim().min(2, "Nom requis").max(200),
-    customerEmail: z.string().trim().email("E-mail invalide").max(200),
-    customerPhone: z.string().trim().min(3, "Téléphone requis").max(50),
+    customerName: z.string().trim().max(200).optional().default(""),
+    customerEmail: z
+      .union([z.string().trim().email("E-mail invalide").max(200), z.literal("")])
+      .optional()
+      .default(""),
+    customerPhone: z.string().trim().max(50).optional().default(""),
     company: z.string().trim().max(200).optional().default(""),
     model: z.enum(FEFCO_MODELS),
     modelOther: z.string().trim().max(200).optional().default(""),
     lengthCm: z.coerce.number().positive("Longueur requise").max(10000),
     widthCm: z.coerce.number().positive("Largeur requise").max(10000),
     heightCm: z.coerce.number().positive("Hauteur requise").max(10000),
-    ondulation: z.enum(ONDULATION_OPTIONS),
-    cannelure: z.enum(CANNELURE_TYPES),
-    color: z.enum(CARTON_COLORS),
+    ondulation: z.enum(ONDULATION_OPTIONS).optional().default("simple"),
+    cannelure: z.enum(CANNELURE_TYPES).optional().default("B"),
+    color: z.enum(CARTON_COLORS).optional().default("marron"),
     printing: z.coerce.boolean().optional().default(false),
     logoUrl: z
       .string()
@@ -188,6 +197,115 @@ export const devisRequestSchema = z
   });
 
 export type DevisRequestInput = z.infer<typeof devisRequestSchema>;
+
+/**
+ * Build a devis-request schema that honours the admin-configured form
+ * settings. The customer-supplied payload is validated against:
+ *   - the per-field visibility/required toggles (hidden or optional fields
+ *     are coerced to empty/default values; required fields enforce the same
+ *     per-field constraints as the baseline schema),
+ *   - the minimum allowed quantity (`settings.minQuantity`).
+ *
+ * The upstream record always carries the full set of fields so the admin UI
+ * can keep showing them; values for hidden fields fall back to safe empties
+ * or the historical defaults.
+ */
+export function buildDevisRequestSchema(settings: DevisFormSettings) {
+  const minQty = Math.max(1, Math.floor(settings.minQuantity));
+
+  function stringField(
+    key:
+      | "customerName"
+      | "customerEmail"
+      | "customerPhone"
+      | "company"
+      | "message",
+    requiredRule: z.ZodTypeAny,
+    maxLen: number
+  ) {
+    const conf = getDevisFieldConfig(settings, key);
+    if (conf.visible && conf.required) return requiredRule;
+    return z
+      .union([z.string().max(maxLen), z.literal(""), z.undefined(), z.null()])
+      .transform((v) => (typeof v === "string" ? v.trim() : ""));
+  }
+
+  function enumField<T extends string>(
+    key: "ondulation" | "cannelure" | "color",
+    values: readonly [T, ...T[]],
+    fallback: T
+  ) {
+    const conf = getDevisFieldConfig(settings, key);
+    if (conf.visible && conf.required) return z.enum(values);
+    return z
+      .union([z.enum(values), z.literal(""), z.undefined(), z.null()])
+      .transform((v) => (typeof v === "string" && v ? (v as T) : fallback));
+  }
+
+  const printingConf = getDevisFieldConfig(settings, "printing");
+
+  return z
+    .object({
+      customerName: stringField(
+        "customerName",
+        z.string().trim().min(2, "Nom requis").max(200),
+        200
+      ),
+      customerEmail: stringField(
+        "customerEmail",
+        z.string().trim().email("E-mail invalide").max(200),
+        200
+      ),
+      customerPhone: stringField(
+        "customerPhone",
+        z.string().trim().min(3, "Téléphone requis").max(50),
+        50
+      ),
+      company: stringField("company", z.string().trim().min(1).max(200), 200),
+      model: z.enum(FEFCO_MODELS),
+      modelOther: z.string().trim().max(200).optional().default(""),
+      lengthCm: z.coerce.number().positive("Longueur requise").max(10000),
+      widthCm: z.coerce.number().positive("Largeur requise").max(10000),
+      heightCm: z.coerce.number().positive("Hauteur requise").max(10000),
+      ondulation: enumField("ondulation", ONDULATION_OPTIONS, "simple"),
+      cannelure: enumField("cannelure", CANNELURE_TYPES, "B"),
+      color: enumField("color", CARTON_COLORS, "marron"),
+      // Printing is a boolean toggle: when the field is hidden, force false so
+      // the customer can't surreptitiously request printing.
+      printing: printingConf.visible
+        ? z.coerce.boolean().optional().default(false)
+        : z
+            .union([z.boolean(), z.string(), z.undefined(), z.null()])
+            .transform(() => false),
+      logoUrl: z
+        .string()
+        .max(500)
+        .refine(
+          (v) => v === "" || v.startsWith("/api/files/"),
+          "Le logo doit être téléversé via le formulaire."
+        )
+        .optional()
+        .default(""),
+      logoFileName: z.string().trim().max(200).optional().default(""),
+      quantity: z.coerce
+        .number()
+        .int("Quantité requise")
+        .max(10_000_000)
+        .refine((q) => q >= minQty, {
+          message: `La quantité minimale est de ${minQty}.`,
+        }),
+      message: stringField("message", z.string().trim().min(1).max(2000), 2000),
+    })
+    .superRefine((val, ctx) => {
+      if (val.model === "Autre" && !val.modelOther) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["modelOther"],
+          message: "Précisez le modèle souhaité.",
+        });
+      }
+    });
+}
 
 export const devisStatusUpdateSchema = z.object({
   status: z.enum(DEVIS_STATUSES).optional(),
