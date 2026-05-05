@@ -476,12 +476,11 @@ export const apiClient = {
       token,
       next: publicReadCache(token, [CACHE_TAGS.categories]),
     });
-    // Hide internal records used as side-channel storage (e.g. checkout
-    // settings, quote requests) so they never appear in storefront or admin
-    // category lists. Any name starting with "__" is treated as internal.
-    return (r.categories || []).filter(
-      (c) => !c.name.startsWith("__") && c.name !== SETTINGS_CATEGORY_NAME
-    );
+    // Hide internal records used as side-channel storage (e.g. site settings,
+    // quote requests) so they never appear in storefront or admin category
+    // lists. Any name starting with "__" is treated as internal — this covers
+    // the existing `__settings__` record and the `__devis__:*` records.
+    return (r.categories || []).filter((c) => !c.name.startsWith("__"));
   },
   /** Internal: includes the hidden `__settings__` record. */
   async _listAllCategories(token?: string | null): Promise<ApiCategory[]> {
