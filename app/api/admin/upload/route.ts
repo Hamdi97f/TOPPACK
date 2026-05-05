@@ -21,10 +21,10 @@ export async function POST(req: Request) {
   }
   try {
     const result = await apiClient.uploadFile(session.user.apiToken, file);
-    // The api-gateway returns file metadata; if it provides a URL, surface it,
-    // otherwise fall back to the file id which the frontend can use as a
-    // reference.
-    const url = result.url || result.file_id;
+    // Always surface a browser-loadable URL: prefer the gateway-provided URL,
+    // otherwise route through our own /api/files/{id} proxy. Returning the
+    // bare file_id here used to break product images on the storefront.
+    const url = result.url || `/api/files/${encodeURIComponent(result.file_id)}`;
     return NextResponse.json({ url, ...result });
   } catch (err) {
     return apiErrorResponse(err, "Échec du téléversement du fichier");

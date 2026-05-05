@@ -63,7 +63,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
       <section className="card p-4 mt-4">
         <h2 className="font-semibold mb-2">Articles</h2>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm hidden md:table">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
               <th className="text-left p-2">Produit</th>
@@ -93,6 +93,25 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             </tr>
           </tfoot>
         </table>
+        <ul className="md:hidden divide-y divide-kraft-100 -mx-4">
+          {order.order_items.map((i, idx) => {
+            const p = productById.get(i.product_id);
+            const lineTotal = Number(i.unit_price) * i.quantity;
+            return (
+              <li key={i.id ?? idx} className="px-4 py-3">
+                <div className="font-medium text-kraft-900">{p?.name ?? i.product_id}</div>
+                <div className="mt-1 text-sm text-kraft-700 flex justify-between">
+                  <span>{i.quantity} × {formatPrice(Number(i.unit_price))}</span>
+                  <span className="font-semibold">{formatPrice(lineTotal)}</span>
+                </div>
+              </li>
+            );
+          })}
+          <li className="px-4 py-3 flex justify-between font-bold">
+            <span>Total</span>
+            <span>{formatPrice(Number(order.total))}</span>
+          </li>
+        </ul>
       </section>
 
       <section className="card p-4 mt-4 text-sm">

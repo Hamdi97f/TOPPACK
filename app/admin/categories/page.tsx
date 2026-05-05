@@ -28,7 +28,7 @@ export default async function AdminCategoriesPage() {
         <h1 className="text-2xl font-bold text-kraft-900">Catégories</h1>
         <Link href="/admin/categories/new" className="btn-primary">Nouvelle catégorie</Link>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
@@ -53,6 +53,26 @@ export default async function AdminCategoriesPage() {
           </tbody>
         </table>
       </div>
+      <ul className="md:hidden space-y-3">
+        {categories.map((c) => (
+          <li key={c.id} className="card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <Link href={`/admin/categories/${c.id}`} className="font-medium text-kraft-900 hover:text-kraft-700 flex-1 min-w-0">
+                {c.name}
+              </Link>
+              <span className="text-sm text-kraft-600 shrink-0">{counts.get(c.id) ?? 0} produit(s)</span>
+            </div>
+            <div className="font-mono text-xs text-kraft-600 mt-1">{c.slug}</div>
+            <div className="mt-3 flex justify-end gap-2">
+              <Link href={`/admin/categories/${c.id}`} className="btn-secondary !py-1 !px-3 text-xs">Modifier</Link>
+              <CategoryDeleteButton id={c.id} />
+            </div>
+          </li>
+        ))}
+        {categories.length === 0 && (
+          <li className="card p-6 text-center text-kraft-600">Aucune catégorie pour le moment.</li>
+        )}
+      </ul>
     </div>
   );
 }

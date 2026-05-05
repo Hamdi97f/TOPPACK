@@ -1,6 +1,8 @@
 import Link from "next/link";
+import type { ContactInfo } from "@/lib/site-settings";
+import { defaultContactInfo } from "@/lib/site-settings";
 
-export function Footer() {
+export function Footer({ contact = defaultContactInfo() }: { contact?: ContactInfo }) {
   return (
     <footer className="mt-auto bg-kraft-800 text-kraft-100">
       <div className="container-x py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
@@ -30,8 +32,9 @@ export function Footer() {
         </div>
         <div>
           <div className="font-semibold text-white mb-2">Contact</div>
-          <p className="text-kraft-200">support@toppack.local</p>
-          <p className="text-kraft-200">+1 (555) 010-2030</p>
+          {contact.email && <p className="text-kraft-200 break-all">{contact.email}</p>}
+          {contact.phone && <p className="text-kraft-200">{contact.phone}</p>}
+          {contact.address && <p className="text-kraft-200 whitespace-pre-line mt-1">{contact.address}</p>}
         </div>
       </div>
       <div className="border-t border-kraft-700 py-4 text-center text-xs text-kraft-300">

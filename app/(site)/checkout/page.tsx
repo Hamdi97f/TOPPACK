@@ -1,130 +1,25 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { apiClient } from "@/lib/api-client";
+import { CheckoutForm } from "@/components/CheckoutForm";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useCart } from "@/components/CartProvider";
-import { formatPrice } from "@/lib/utils";
+export const dynamic = "force-dynamic";
 
-export default function CheckoutPage() {
-  const { items, subtotal, clear } = useCart();
-  const { data: session } = useSession();
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+export default async function CheckoutPage() {
+  // Fetch settings server-side so the form is rendered with the right fields
+  // on first paint. Falls back to defaults if the api-gateway is unreachable.
+  const settings = await apiClient.getSiteSettings();
 
-  useEffect(() => {
-    if (items.length === 0) router.replace("/cart");
-  }, [items, router]);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const payload = {
-      customerName: formData.get("customerName"),
-      customerEmail: formData.get("customerEmail"),
-      customerPhone: formData.get("customerPhone"),
-      addressLine: formData.get("addressLine"),
-      city: formData.get("city"),
-      postalCode: formData.get("postalCode"),
-      country: formData.get("country"),
-      notes: formData.get("notes"),
-      paymentMethod: formData.get("paymentMethod"),
-      items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-    };
-    try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Échec de la commande");
-      clear();
-      router.push(`/orders/${data.id}/confirmation`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de la commande");
-      setSubmitting(false);
+  // Account-required gate: bounce anonymous shoppers to the login page so
+  // they can sign in (or register) before placing an order. The same check
+  // is enforced in `POST /api/orders` so the client can't bypass it.
+  if (settings.account.requireAccountForOrder) {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      redirect("/login?callbackUrl=%2Fcheckout");
     }
   }
 
-  if (items.length === 0) return null;
-
-  return (
-    <div className="container-x py-8 grid lg:grid-cols-[1fr_22rem] gap-6">
-      <form onSubmit={onSubmit} className="card p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-kraft-900">Commande</h1>
-        {error && <div className="bg-red-50 text-red-700 p-3 rounded text-sm">{error}</div>}
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="label" htmlFor="customerName">Nom complet</label>
-            <input id="customerName" name="customerName" required defaultValue={session?.user?.name ?? ""} className="input" />
-          </div>
-          <div>
-            <label className="label" htmlFor="customerEmail">E-mail</label>
-            <input id="customerEmail" name="customerEmail" type="email" required defaultValue={session?.user?.email ?? ""} className="input" />
-          </div>
-          <div>
-            <label className="label" htmlFor="customerPhone">Téléphone</label>
-            <input id="customerPhone" name="customerPhone" required className="input" />
-          </div>
-          <div>
-            <label className="label" htmlFor="country">Pays</label>
-            <input id="country" name="country" required defaultValue="France" className="input" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="label" htmlFor="addressLine">Adresse</label>
-            <input id="addressLine" name="addressLine" required className="input" />
-          </div>
-          <div>
-            <label className="label" htmlFor="city">Ville</label>
-            <input id="city" name="city" required className="input" />
-          </div>
-          <div>
-            <label className="label" htmlFor="postalCode">Code postal</label>
-            <input id="postalCode" name="postalCode" required className="input" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="label" htmlFor="notes">Notes (facultatif)</label>
-            <textarea id="notes" name="notes" rows={3} className="textarea" />
-          </div>
-        </div>
-
-        <fieldset>
-          <legend className="label">Mode de paiement</legend>
-          <label className="flex items-center gap-2 p-3 card cursor-pointer mb-2">
-            <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" defaultChecked required />
-            <span>Paiement à la livraison</span>
-          </label>
-          <label className="flex items-center gap-2 p-3 card cursor-pointer">
-            <input type="radio" name="paymentMethod" value="BANK_TRANSFER" required />
-            <span>Virement bancaire</span>
-          </label>
-        </fieldset>
-
-        <button type="submit" className="btn-primary w-full" disabled={submitting}>
-          {submitting ? "Traitement de la commande…" : `Valider la commande — ${formatPrice(subtotal)}`}
-        </button>
-      </form>
-
-      <aside className="card p-6 h-fit">
-        <h2 className="font-bold text-kraft-900 mb-3">Récapitulatif</h2>
-        <ul className="space-y-2 text-sm">
-          {items.map((i) => (
-            <li key={i.productId} className="flex justify-between">
-              <span className="truncate pr-2">{i.name} × {i.quantity}</span>
-              <span>{formatPrice(i.price * i.quantity)}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="border-t border-kraft-200 mt-3 pt-3 flex justify-between font-bold">
-          <span>Total</span>
-          <span>{formatPrice(subtotal)}</span>
-        </div>
-      </aside>
-    </div>
-  );
+  return <CheckoutForm settings={settings.checkout} />;
 }

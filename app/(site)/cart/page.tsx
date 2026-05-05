@@ -1,11 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/utils";
 
 export default function CartPage() {
   const { items, setQuantity, remove, subtotal, clear } = useCart();
+  const { status } = useSession();
+  const [requireAccount, setRequireAccount] = useState(false);
+
+  // Show a hint on the cart when the admin requires customers to sign in
+  // before checkout. Pulled lazily so the cart still works if the call fails.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/site-settings/public", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.requireAccountForOrder) setRequireAccount(true);
+      })
+      .catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const needsLogin = requireAccount && status === "unauthenticated";
 
   if (items.length === 0) {
     return (
@@ -67,7 +86,17 @@ export default function CartPage() {
           <span>Total</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
-        <Link href="/checkout" className="btn-primary w-full mt-4">Passer à la commande</Link>
+        <Link
+          href={needsLogin ? "/login?callbackUrl=%2Fcheckout" : "/checkout"}
+          className="btn-primary w-full mt-4"
+        >
+          {needsLogin ? "Se connecter pour commander" : "Passer à la commande"}
+        </Link>
+        {needsLogin && (
+          <p className="text-xs text-kraft-700 mt-2 text-center">
+            Un compte est requis pour finaliser votre commande.
+          </p>
+        )}
         <Link href="/products" className="block text-center mt-2 text-sm text-kraft-700 hover:underline">
           Continuer mes achats
         </Link>

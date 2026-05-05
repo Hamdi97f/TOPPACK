@@ -34,7 +34,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
       <form className="mb-4">
         <input name="q" defaultValue={rawQ ?? ""} placeholder="Rechercher par nom ou référence…" className="input max-w-sm" />
       </form>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead className="bg-kraft-100 text-kraft-800">
             <tr>
@@ -73,6 +73,35 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
           </tbody>
         </table>
       </div>
+      <ul className="md:hidden space-y-3">
+        {products.map((p) => (
+          <li key={p.id} className="card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <Link href={`/admin/products/${p.id}`} className="font-medium text-kraft-900 hover:text-kraft-700 flex-1 min-w-0">
+                {p.name}
+              </Link>
+              <span className={`badge shrink-0 ${p.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+                {p.isActive ? "Actif" : "Inactif"}
+              </span>
+            </div>
+            {p.sku && <div className="font-mono text-xs text-kraft-600 mt-1">{p.sku}</div>}
+            <div className="text-xs text-kraft-600 mt-1">
+              {p.categoryId ? categoriesById.get(p.categoryId)?.name ?? "—" : "—"}
+            </div>
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="font-bold text-kraft-800">{formatPrice(p.price)}</span>
+              <span className="text-kraft-600">Stock : {p.stock}</span>
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <Link href={`/admin/products/${p.id}`} className="btn-secondary !py-1 !px-3 text-xs">Modifier</Link>
+              <ProductDeleteButton id={p.id} />
+            </div>
+          </li>
+        ))}
+        {products.length === 0 && (
+          <li className="card p-6 text-center text-kraft-600">Aucun produit trouvé.</li>
+        )}
+      </ul>
     </div>
   );
 }
