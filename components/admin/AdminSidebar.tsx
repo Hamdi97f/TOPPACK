@@ -10,6 +10,7 @@ const links = [
   { href: "/admin/products", label: "Produits" },
   { href: "/admin/categories", label: "Catégories" },
   { href: "/admin/settings/checkout", label: "Commande" },
+  { href: "/admin/settings/shipping", label: "Frais de livraison" },
   { href: "/admin/settings/contact", label: "Contact" },
   { href: "/admin/settings/branding", label: "Identité du site" },
   { href: "/admin/settings/integrations", label: "Intégrations" },

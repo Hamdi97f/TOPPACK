@@ -10,6 +10,12 @@ import {
   CheckoutSettings,
   fieldLabel,
 } from "@/lib/checkout-settings";
+import {
+  computeShippingFee,
+  defaultShippingSettings,
+  normaliseShippingSettings,
+  type ShippingSettings,
+} from "@/lib/site-settings";
 
 const FIELD_INPUT_PROPS: Record<
   CheckoutFieldKey,
@@ -32,15 +38,33 @@ const FIELD_INPUT_PROPS: Record<
 };
 
 export function CheckoutForm({ settings }: { settings: CheckoutSettings }) {
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, count, clear } = useCart();
   const { data: session } = useSession();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [shipping, setShipping] = useState<ShippingSettings>(() => defaultShippingSettings());
 
   useEffect(() => {
     if (items.length === 0) router.replace("/cart");
   }, [items, router]);
+
+  // Pull the shipping configuration so the summary reflects what the server
+  // will charge. The server recomputes the fee — this is purely informational.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/site-settings/public", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.shipping) return;
+        setShipping(normaliseShippingSettings(data.shipping));
+      })
+      .catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const shippingFee = computeShippingFee(count, shipping);
+  const grandTotal = subtotal + shippingFee;
 
   // Pre-compute the visible fields in the schema-defined order so the layout
   // is stable regardless of how the admin saved them.
@@ -155,7 +179,7 @@ export function CheckoutForm({ settings }: { settings: CheckoutSettings }) {
         )}
 
         <button type="submit" className="btn-primary w-full" disabled={submitting}>
-          {submitting ? "Traitement de la commande…" : `Valider la commande — ${formatPrice(subtotal)}`}
+          {submitting ? "Traitement de la commande…" : `Valider la commande — ${formatPrice(grandTotal)}`}
         </button>
       </form>
 
@@ -169,9 +193,23 @@ export function CheckoutForm({ settings }: { settings: CheckoutSettings }) {
             </li>
           ))}
         </ul>
+        <div className="border-t border-kraft-200 mt-3 pt-3 space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span>Sous-total</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-kraft-700">
+            <span>Livraison</span>
+            {shipping.enabled && shipping.tiers.length > 0 ? (
+              <span>{formatPrice(shippingFee)}</span>
+            ) : (
+              <span>Calculée à la commande</span>
+            )}
+          </div>
+        </div>
         <div className="border-t border-kraft-200 mt-3 pt-3 flex justify-between font-bold">
           <span>Total</span>
-          <span>{formatPrice(subtotal)}</span>
+          <span>{formatPrice(grandTotal)}</span>
         </div>
       </aside>
     </div>

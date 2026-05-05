@@ -364,17 +364,41 @@ export function buildShippingAddress(f: Pick<OrderShippingFields, "customerPhone
   return lines.join("\n");
 }
 
-export function buildOrderNotes(paymentMethod: string, notes: string | null | undefined): string {
-  const lead = `PAYMENT: ${paymentMethod}`;
-  if (!notes) return lead;
-  return `${lead}\n${notes}`;
+export function buildOrderNotes(
+  paymentMethod: string,
+  notes: string | null | undefined,
+  shippingFee?: number | null
+): string {
+  const lines = [`PAYMENT: ${paymentMethod}`];
+  if (typeof shippingFee === "number" && Number.isFinite(shippingFee) && shippingFee > 0) {
+    // Persist with 3 decimal places to match the dinar's millime precision.
+    lines.push(`SHIPPING: ${shippingFee.toFixed(3)}`);
+  }
+  if (notes) lines.push(notes);
+  return lines.join("\n");
 }
 
-export function parseOrderNotes(notes: string | null | undefined): { paymentMethod: string | null; text: string } {
-  if (!notes) return { paymentMethod: null, text: "" };
-  const m = notes.match(/^PAYMENT:\s*(\S+)\s*\n?/);
-  if (!m) return { paymentMethod: null, text: notes };
-  return { paymentMethod: m[1], text: notes.slice(m[0].length) };
+export function parseOrderNotes(notes: string | null | undefined): {
+  paymentMethod: string | null;
+  shippingFee: number | null;
+  text: string;
+} {
+  if (!notes) return { paymentMethod: null, shippingFee: null, text: "" };
+  let remaining = notes;
+  let paymentMethod: string | null = null;
+  let shippingFee: number | null = null;
+  const payMatch = remaining.match(/^PAYMENT:\s*(\S+)\s*\n?/);
+  if (payMatch) {
+    paymentMethod = payMatch[1];
+    remaining = remaining.slice(payMatch[0].length);
+  }
+  const shipMatch = remaining.match(/^SHIPPING:\s*([0-9]+(?:\.[0-9]+)?)\s*\n?/);
+  if (shipMatch) {
+    const v = Number(shipMatch[1]);
+    if (Number.isFinite(v) && v >= 0) shippingFee = v;
+    remaining = remaining.slice(shipMatch[0].length);
+  }
+  return { paymentMethod, shippingFee, text: remaining };
 }
 
 export function parseShippingAddress(addr: string | null | undefined): {

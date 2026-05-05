@@ -29,7 +29,9 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ i
   // Look up product names for the line items.
   const products = await apiClient.listProducts(session.user.apiToken).catch(() => []);
   const productById = new Map(products.map((p) => [p.id, adaptProduct(p)]));
-  const { paymentMethod } = parseOrderNotes(order.notes);
+  const { paymentMethod, shippingFee } = parseOrderNotes(order.notes);
+  const itemsTotal = Number(order.total);
+  const grandTotal = itemsTotal + (shippingFee ?? 0);
 
   return (
     <div className="container-x py-10 max-w-2xl mx-auto">
@@ -59,9 +61,21 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ i
             );
           })}
         </ul>
+        <div className="border-t border-kraft-200 mt-3 pt-3 space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span>Sous-total</span>
+            <span>{formatPrice(itemsTotal)}</span>
+          </div>
+          {shippingFee !== null && (
+            <div className="flex justify-between text-kraft-700">
+              <span>Livraison</span>
+              <span>{formatPrice(shippingFee)}</span>
+            </div>
+          )}
+        </div>
         <div className="border-t border-kraft-200 mt-3 pt-3 flex justify-between font-bold">
           <span>Total</span>
-          <span>{formatPrice(Number(order.total))}</span>
+          <span>{formatPrice(grandTotal)}</span>
         </div>
         <div className="text-sm text-kraft-600 mt-3">Paiement : {paymentMethodLabel(paymentMethod)}</div>
         <div className="text-sm text-kraft-600">Statut : {statusLabel(order.status)}</div>
