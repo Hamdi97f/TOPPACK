@@ -14,7 +14,12 @@ export type ProductFormProduct = {
   widthCm: number;
   heightCm: number;
   wallType: string;
+  /** Effective price returned by the api-gateway (= promo when active). */
   price: number;
+  /** Regular (non-discounted) price; null when no promo is active. */
+  regularPrice: number | null;
+  /** Promo price; null when no promo is active. */
+  promoPrice: number | null;
   stock: number;
   imageUrl: string | null;
   isActive: boolean;
@@ -84,6 +89,7 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
     setError(null);
     setSubmitting(true);
     const fd = new FormData(e.currentTarget);
+    const rawPromo = (fd.get("promoPrice") ?? "").toString().trim();
     const payload = {
       name: fd.get("name"),
       slug: fd.get("slug"),
@@ -94,6 +100,7 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
       heightCm: Number(fd.get("heightCm")),
       wallType: fd.get("wallType"),
       price: Number(fd.get("price")),
+      promoPrice: rawPromo === "" ? null : Number(rawPromo),
       stock: Number(fd.get("stock")),
       categoryId: fd.get("categoryId"),
       isActive: fd.get("isActive") === "on",
@@ -180,7 +187,22 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
         </div>
         <div>
           <label className="label" htmlFor="price">Prix (DT)</label>
-          <input id="price" name="price" type="number" step="0.001" min="0" required defaultValue={initial?.price ?? ""} className="input" />
+          <input id="price" name="price" type="number" step="0.001" min="0" required defaultValue={initial?.regularPrice ?? initial?.price ?? ""} className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="promoPrice">Prix promo (DT)</label>
+          <input
+            id="promoPrice"
+            name="promoPrice"
+            type="number"
+            step="0.001"
+            min="0"
+            defaultValue={initial?.promoPrice ?? ""}
+            className="input"
+          />
+          <div className="text-xs text-kraft-600 mt-1">
+            Optionnel. Doit être strictement inférieur au prix normal pour être appliqué.
+          </div>
         </div>
         <div>
           <label className="label" htmlFor="stock">Stock</label>
