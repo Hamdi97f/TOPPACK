@@ -207,6 +207,71 @@ export function normaliseAccountSettings(input: unknown): AccountSettings {
 }
 
 // ---------------------------------------------------------------------------
+// Branding section (site title, description, social image, favicon)
+// ---------------------------------------------------------------------------
+
+/**
+ * Branding controls the values exposed in the site's HTML `<head>`:
+ * the default `<title>`, the meta description, the Open Graph / Twitter
+ * social-share image and the favicon.
+ *
+ * Image fields accept either an absolute http(s) URL or a relative path
+ * served by the app itself (e.g. `/api/files/<id>` for assets uploaded
+ * through the admin upload route, or a path under `/public`). An empty
+ * string falls back to the built-in defaults.
+ */
+export interface BrandingSettings {
+  siteTitle: string;
+  siteDescription: string;
+  socialImageUrl: string;
+  faviconUrl: string;
+}
+
+export const DEFAULT_SITE_TITLE = "TOPPACK — Cartons en carton ondulé";
+export const DEFAULT_SITE_DESCRIPTION =
+  "TOPPACK fabrique et vend des cartons ondulés de haute qualité — simple cannelure, double cannelure, enveloppes d'expédition et emballages personnalisés.";
+
+export function defaultBrandingSettings(): BrandingSettings {
+  return {
+    siteTitle: DEFAULT_SITE_TITLE,
+    siteDescription: DEFAULT_SITE_DESCRIPTION,
+    socialImageUrl: "",
+    faviconUrl: "",
+  };
+}
+
+/**
+ * Returns true when `value` is safe to inline as an `href`/`content`
+ * attribute in `<head>`: an absolute http(s) URL, or a same-origin path
+ * (starting with `/` but not `//`). This blocks `javascript:` and other
+ * dangerous URI schemes that could otherwise be injected through the
+ * admin form and rendered into the document head.
+ */
+export function isSafeAssetUrl(value: string): boolean {
+  if (!value) return false;
+  if (/^https?:\/\//i.test(value)) return true;
+  // Same-origin path: must start with a single "/" and not "//" (which
+  // would be a protocol-relative URL pointing at another host).
+  return value.startsWith("/") && !value.startsWith("//");
+}
+
+export function normaliseBrandingSettings(input: unknown): BrandingSettings {
+  const defaults = defaultBrandingSettings();
+  if (!input || typeof input !== "object") return defaults;
+  const r = input as Record<string, unknown>;
+  const siteTitle = trimString(r.siteTitle, 200) || defaults.siteTitle;
+  const siteDescription = trimString(r.siteDescription, 500) || defaults.siteDescription;
+  const rawSocial = trimString(r.socialImageUrl, 1000);
+  const rawFavicon = trimString(r.faviconUrl, 1000);
+  return {
+    siteTitle,
+    siteDescription,
+    socialImageUrl: isSafeAssetUrl(rawSocial) ? rawSocial : "",
+    faviconUrl: isSafeAssetUrl(rawFavicon) ? rawFavicon : "",
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -215,6 +280,7 @@ export interface SiteSettings {
   contact: ContactInfo;
   integrations: IntegrationsSettings;
   account: AccountSettings;
+  branding: BrandingSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -223,6 +289,7 @@ export function defaultSiteSettings(): SiteSettings {
     contact: defaultContactInfo(),
     integrations: defaultIntegrationsSettings(),
     account: defaultAccountSettings(),
+    branding: defaultBrandingSettings(),
   };
 }
 
@@ -234,6 +301,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     contact: normaliseContactInfo(r.contact),
     integrations: normaliseIntegrationsSettings(r.integrations),
     account: normaliseAccountSettings(r.account),
+    branding: normaliseBrandingSettings(r.branding),
   };
 }
 
