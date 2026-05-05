@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-client";
 import { buildCheckoutSchema } from "@/lib/validators";
 import { sendMetaPurchaseEvent } from "@/lib/meta-capi";
+import { computeShippingFee } from "@/lib/site-settings";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -55,13 +56,18 @@ export async function POST(req: Request) {
   // prices are never trusted.
   const token = session?.user?.apiToken ?? (await getServiceToken());
 
+  // Compute shipping fee server-side from the cart's total quantity. Never
+  // trust any value the client may have provided.
+  const totalQuantity = data.items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+  const shippingFee = computeShippingFee(totalQuantity, settings.shipping);
+
   let order;
   try {
     order = await apiClient.createOrder(token, {
       customer_name: data.customerName,
       customer_email: data.customerEmail,
       shipping_address: buildShippingAddress(data),
-      notes: buildOrderNotes(data.paymentMethod, data.notes ?? null),
+      notes: buildOrderNotes(data.paymentMethod, data.notes ?? null, shippingFee),
       items: data.items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
     });
   } catch (err) {
@@ -89,7 +95,7 @@ export async function POST(req: Request) {
       eventId: order.id,
       email: data.customerEmail || undefined,
       phone: data.customerPhone || undefined,
-      value: typeof order.total === "number" ? order.total : 0,
+      value: (typeof order.total === "number" ? order.total : 0) + shippingFee,
       currency: "EUR",
       eventSourceUrl: origin ? `${origin.replace(/\/$/, "")}/checkout` : undefined,
       clientIpAddress: clientIp,

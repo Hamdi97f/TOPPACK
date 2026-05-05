@@ -11,5 +11,6 @@ export async function GET() {
   return NextResponse.json({
     requireAccountForOrder: settings.account.requireAccountForOrder,
     metaPixelEnabled: !!settings.integrations.metaPixelId,
+    shipping: settings.shipping,
   });
 }

@@ -31,8 +31,10 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   const products = await apiClient.listProducts(token).catch(() => []);
   const productById = new Map(products.map((p) => [p.id, adaptProduct(p)]));
-  const { paymentMethod, text: noteText } = parseOrderNotes(order.notes);
+  const { paymentMethod, shippingFee, text: noteText } = parseOrderNotes(order.notes);
   const shipping = parseShippingAddress(order.shipping_address);
+  const itemsTotal = Number(order.total);
+  const grandTotal = itemsTotal + (shippingFee ?? 0);
 
   return (
     <div className="max-w-4xl">
@@ -93,9 +95,19 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             })}
           </tbody>
           <tfoot>
+            <tr className="border-t border-kraft-100">
+              <td colSpan={3} className="p-2 text-right">Sous-total</td>
+              <td className="p-2 text-right">{formatPrice(itemsTotal)}</td>
+            </tr>
+            {shippingFee !== null && (
+              <tr>
+                <td colSpan={3} className="p-2 text-right text-kraft-700">Livraison</td>
+                <td className="p-2 text-right text-kraft-700">{formatPrice(shippingFee)}</td>
+              </tr>
+            )}
             <tr className="font-bold border-t border-kraft-200">
               <td colSpan={3} className="p-2 text-right">Total</td>
-              <td className="p-2 text-right">{formatPrice(Number(order.total))}</td>
+              <td className="p-2 text-right">{formatPrice(grandTotal)}</td>
             </tr>
           </tfoot>
         </table>
@@ -113,9 +125,19 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               </li>
             );
           })}
-          <li className="px-4 py-3 flex justify-between font-bold">
+          <li className="px-4 py-3 flex justify-between text-sm border-t border-kraft-100">
+            <span>Sous-total</span>
+            <span>{formatPrice(itemsTotal)}</span>
+          </li>
+          {shippingFee !== null && (
+            <li className="px-4 py-1 flex justify-between text-sm text-kraft-700">
+              <span>Livraison</span>
+              <span>{formatPrice(shippingFee)}</span>
+            </li>
+          )}
+          <li className="px-4 py-3 flex justify-between font-bold border-t border-kraft-200">
             <span>Total</span>
-            <span>{formatPrice(Number(order.total))}</span>
+            <span>{formatPrice(grandTotal)}</span>
           </li>
         </ul>
       </section>

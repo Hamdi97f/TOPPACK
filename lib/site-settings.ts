@@ -272,6 +272,82 @@ export function normaliseBrandingSettings(input: unknown): BrandingSettings {
 }
 
 // ---------------------------------------------------------------------------
+// Shipping section (quantity-tier-based shipping fees)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single shipping tier. The fee applies whenever the cart's total quantity
+ * is greater than or equal to `minQuantity`. The effective fee for a cart is
+ * the fee of the highest matching tier (i.e. the tier with the largest
+ * `minQuantity` ≤ cart quantity). When no tier matches (or the list is
+ * empty) the shipping fee is 0.
+ *
+ * Example admin configuration:
+ *   [{ minQuantity: 1, fee: 7 }, { minQuantity: 3, fee: 14 }, { minQuantity: 5, fee: 21 }]
+ *   - 1–2 items   → 7 DT
+ *   - 3–4 items   → 14 DT
+ *   - 5+ items    → 21 DT
+ */
+export interface ShippingTier {
+  minQuantity: number;
+  fee: number;
+}
+
+export interface ShippingSettings {
+  /** When true, the configured tiers are applied to carts and orders. */
+  enabled: boolean;
+  /** Tiers sorted ascending by `minQuantity`. */
+  tiers: ShippingTier[];
+}
+
+export function defaultShippingSettings(): ShippingSettings {
+  return { enabled: false, tiers: [] };
+}
+
+export function normaliseShippingSettings(input: unknown): ShippingSettings {
+  if (!input || typeof input !== "object") return defaultShippingSettings();
+  const r = input as Record<string, unknown>;
+  const rawTiers = Array.isArray(r.tiers) ? r.tiers : [];
+  const tiers: ShippingTier[] = [];
+  for (const raw of rawTiers) {
+    if (!raw || typeof raw !== "object") continue;
+    const t = raw as Record<string, unknown>;
+    const minQuantity = Math.floor(Number(t.minQuantity));
+    const fee = Number(t.fee);
+    if (!Number.isFinite(minQuantity) || minQuantity < 1) continue;
+    if (!Number.isFinite(fee) || fee < 0) continue;
+    tiers.push({ minQuantity, fee });
+  }
+  // Sort ascending and de-duplicate by minQuantity (last write wins).
+  tiers.sort((a, b) => a.minQuantity - b.minQuantity);
+  const deduped: ShippingTier[] = [];
+  for (const t of tiers) {
+    const prev = deduped[deduped.length - 1];
+    if (prev && prev.minQuantity === t.minQuantity) deduped[deduped.length - 1] = t;
+    else deduped.push(t);
+  }
+  return { enabled: r.enabled === true, tiers: deduped };
+}
+
+/**
+ * Compute the shipping fee for a cart of `totalQuantity` items, given the
+ * admin-configured shipping settings. Returns 0 when shipping is disabled,
+ * no tiers are configured, or the cart is empty.
+ */
+export function computeShippingFee(totalQuantity: number, settings: ShippingSettings): number {
+  if (!settings.enabled) return 0;
+  if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) return 0;
+  if (settings.tiers.length === 0) return 0;
+  // Tiers are stored sorted ascending by minQuantity. Walk from the highest
+  // and return the first tier whose threshold is reached.
+  for (let i = settings.tiers.length - 1; i >= 0; i--) {
+    const t = settings.tiers[i];
+    if (totalQuantity >= t.minQuantity) return t.fee;
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -281,6 +357,7 @@ export interface SiteSettings {
   integrations: IntegrationsSettings;
   account: AccountSettings;
   branding: BrandingSettings;
+  shipping: ShippingSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -290,6 +367,7 @@ export function defaultSiteSettings(): SiteSettings {
     integrations: defaultIntegrationsSettings(),
     account: defaultAccountSettings(),
     branding: defaultBrandingSettings(),
+    shipping: defaultShippingSettings(),
   };
 }
 
@@ -302,6 +380,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     integrations: normaliseIntegrationsSettings(r.integrations),
     account: normaliseAccountSettings(r.account),
     branding: normaliseBrandingSettings(r.branding),
+    shipping: normaliseShippingSettings(r.shipping),
   };
 }
 
