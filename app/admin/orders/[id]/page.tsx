@@ -11,6 +11,7 @@ import {
 import { formatPrice, paymentMethodLabel, statusLabel } from "@/lib/utils";
 import { OrderStatusForm } from "@/components/admin/OrderStatusForm";
 import { PrintButton } from "@/components/admin/PrintButton";
+import { OrderDeleteButton } from "@/components/admin/OrderDeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,9 +41,14 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           <h1 className="text-2xl font-bold text-kraft-900">Commande {order.id}</h1>
           {order.created_at && <div className="text-sm text-kraft-600">{new Date(order.created_at).toLocaleString("fr-FR")}</div>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden items-center">
           <OrderStatusForm id={order.id} status={order.status} />
           <PrintButton />
+          <OrderDeleteButton
+            id={order.id}
+            redirectTo="/admin/orders"
+            className="btn-secondary !py-1 !px-3 text-xs text-red-600 border border-red-200 hover:bg-red-50"
+          />
         </div>
       </div>
 

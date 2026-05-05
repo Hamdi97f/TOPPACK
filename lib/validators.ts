@@ -107,3 +107,27 @@ export function buildCheckoutSchema(settings: CheckoutSettings) {
 export const orderStatusUpdateSchema = z.object({
   status: z.enum(ORDER_STATUSES),
 });
+
+/**
+ * Schema used by the admin "manual order" form. Requirements are looser than
+ * the customer-facing checkout — no field is forced visible/required, the
+ * admin chooses an initial status, and `paymentMethod` is constrained to the
+ * canonical list (not the storefront-visible subset). Pricing is recomputed
+ * server-side: `unit_price` from the client is always discarded.
+ */
+export const adminOrderCreateSchema = z.object({
+  customerName: z.string().trim().max(200).optional().default(""),
+  customerEmail: z
+    .union([z.string().trim().email().max(200), z.literal("")])
+    .optional()
+    .default(""),
+  customerPhone: z.string().trim().max(50).optional().default(""),
+  addressLine: z.string().trim().max(300).optional().default(""),
+  city: z.string().trim().max(100).optional().default(""),
+  postalCode: z.string().trim().max(30).optional().default(""),
+  country: z.string().trim().max(100).optional().default(""),
+  notes: z.string().trim().max(2000).optional().default(""),
+  paymentMethod: z.enum(PAYMENT_METHODS).default("CASH_ON_DELIVERY"),
+  status: z.enum(ORDER_STATUSES).optional(),
+  items: z.array(checkoutItemSchema).min(1).max(100),
+});
