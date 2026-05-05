@@ -10,9 +10,10 @@ const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 // Cap raw bytes at 4 MB to stay safely under that platform limit.
 const MAX_BYTES = 4 * 1024 * 1024; // 4 MB
 
-export async function POST(req: Request) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireAdmin();
   if (response || !session) return response!;
+  const { id } = await params;
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -25,13 +26,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Type de fichier non pris en charge" }, { status: 415 });
   }
   try {
-    const result = await apiClient.uploadFile(session.user.apiToken, file);
-    // Always surface a browser-loadable URL: prefer the gateway-provided URL,
-    // otherwise route through our own /api/files/{id} proxy. Returning the
-    // bare file_id here used to break product images on the storefront.
-    const url = result.url || `/api/files/${encodeURIComponent(result.file_id)}`;
-    return NextResponse.json({ url, ...result });
+    const result = await apiClient.uploadProductImage(session.user.apiToken, id, file);
+    return NextResponse.json(result);
   } catch (err) {
-    return apiErrorResponse(err, "Échec du téléversement du fichier");
+    return apiErrorResponse(err, "Échec du téléversement de l'image du produit");
   }
 }
