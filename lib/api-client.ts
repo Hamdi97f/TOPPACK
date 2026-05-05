@@ -43,6 +43,15 @@ import {
   SiteSettings,
   unpackSiteSettings,
 } from "@/lib/site-settings";
+import {
+  buildDevisCategoryName,
+  type DevisRecord,
+  extractCreatedAtFromName,
+  isDevisCategoryName,
+  normaliseDevisPayload,
+  packDevisDescription,
+  unpackDevisDescription,
+} from "@/lib/devis";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -468,8 +477,11 @@ export const apiClient = {
       next: publicReadCache(token, [CACHE_TAGS.categories]),
     });
     // Hide internal records used as side-channel storage (e.g. checkout
-    // settings) so they never appear in storefront or admin category lists.
-    return (r.categories || []).filter((c) => c.name !== SETTINGS_CATEGORY_NAME);
+    // settings, quote requests) so they never appear in storefront or admin
+    // category lists. Any name starting with "__" is treated as internal.
+    return (r.categories || []).filter(
+      (c) => !c.name.startsWith("__") && c.name !== SETTINGS_CATEGORY_NAME
+    );
   },
   /** Internal: includes the hidden `__settings__` record. */
   async _listAllCategories(token?: string | null): Promise<ApiCategory[]> {
@@ -588,6 +600,94 @@ export const apiClient = {
     const current = await this.getSiteSettings(token);
     await this.setSiteSettings(token, { ...current, checkout: settings });
     return settings;
+  },
+
+  // Devis (quote requests) — persisted as hidden categories whose name carries
+  // the createdAt timestamp and whose description carries the JSON payload.
+  async listDevis(token: string): Promise<DevisRecord[]> {
+    const cats = await this._listAllCategories(token);
+    const records: DevisRecord[] = [];
+    for (const c of cats) {
+      if (!isDevisCategoryName(c.name)) continue;
+      const payload = unpackDevisDescription(c.description);
+      if (!payload) continue;
+      records.push({
+        ...payload,
+        id: c.id,
+        createdAt: extractCreatedAtFromName(c.name) || new Date(0).toISOString(),
+      });
+    }
+    // Newest first.
+    records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return records;
+  },
+
+  async getDevis(token: string, id: string): Promise<DevisRecord | null> {
+    // The api-gateway exposes individual category fetches via the same list
+    // endpoint; pull all and pick the one we want. Devis volume is expected
+    // to be modest (manual sales follow-up), so a full scan is acceptable
+    // and keeps the implementation simple.
+    const cats = await this._listAllCategories(token);
+    const record = cats.find((c) => c.id === id && isDevisCategoryName(c.name));
+    if (!record) return null;
+    const payload = unpackDevisDescription(record.description);
+    if (!payload) return null;
+    return {
+      ...payload,
+      id: record.id,
+      createdAt: extractCreatedAtFromName(record.name) || new Date(0).toISOString(),
+    };
+  },
+
+  async createDevis(
+    token: string,
+    payload: Omit<DevisRecord, "id" | "createdAt" | "status" | "internalNotes" | "reference"> & {
+      status?: DevisRecord["status"];
+      internalNotes?: string;
+    }
+  ): Promise<DevisRecord> {
+    const createdAt = new Date().toISOString();
+    const normalised = normaliseDevisPayload({
+      ...payload,
+      status: payload.status ?? "nouveau",
+      internalNotes: payload.internalNotes ?? "",
+    });
+    // Allocate a short, customer-friendly reference up front (8 hex chars).
+    const reference = `DV-${createdAt.slice(0, 10).replace(/-/g, "")}-${Math.random()
+      .toString(16)
+      .slice(2, 8)
+      .toUpperCase()}`;
+    const withRef = { ...normalised, reference };
+    const description = packDevisDescription({ ...withRef, createdAt });
+    const cat = await this.createCategory(token, {
+      name: buildDevisCategoryName(createdAt),
+      description,
+    });
+    return { ...withRef, id: cat.id, createdAt };
+  },
+
+  async updateDevis(
+    token: string,
+    id: string,
+    patch: Partial<Pick<DevisRecord, "status" | "internalNotes">>
+  ): Promise<DevisRecord> {
+    const current = await this.getDevis(token, id);
+    if (!current) throw new ApiError(404, "Demande de devis introuvable");
+    const next: DevisRecord = {
+      ...current,
+      ...(patch.status ? { status: patch.status } : {}),
+      ...(typeof patch.internalNotes === "string" ? { internalNotes: patch.internalNotes } : {}),
+    };
+    const description = packDevisDescription(next);
+    await this.updateCategory(token, id, {
+      name: buildDevisCategoryName(current.createdAt),
+      description,
+    });
+    return next;
+  },
+
+  async deleteDevis(token: string, id: string): Promise<{ success: boolean }> {
+    return this.deleteCategory(token, id);
   },
 
   // Storage

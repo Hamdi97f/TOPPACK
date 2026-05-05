@@ -27,6 +27,7 @@ export function Footer({ contact = defaultContactInfo() }: { contact?: ContactIn
           <ul className="space-y-1">
             <li><Link href="/about" className="hover:text-white">À propos</Link></li>
             <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
+            <li><Link href="/devis" className="hover:text-white">Demande de devis</Link></li>
             <li><Link href="/shipping" className="hover:text-white">Livraison &amp; retours</Link></li>
           </ul>
         </div>

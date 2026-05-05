@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 const links = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/orders", label: "Commandes" },
+  { href: "/admin/devis", label: "Demandes de devis" },
   { href: "/admin/products", label: "Produits" },
   { href: "/admin/categories", label: "Catégories" },
   { href: "/admin/settings/checkout", label: "Commande" },

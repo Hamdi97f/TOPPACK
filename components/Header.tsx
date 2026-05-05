@@ -39,6 +39,7 @@ export function Header() {
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/products" className="hover:text-kraft-700">Boutique</Link>
           <Link href="/categories" className="hover:text-kraft-700">Catégories</Link>
+          <Link href="/devis" className="hover:text-kraft-700">Devis</Link>
           <Link href="/about" className="hover:text-kraft-700">À propos</Link>
           <Link href="/contact" className="hover:text-kraft-700">Contact</Link>
         </nav>
@@ -116,6 +117,7 @@ export function Header() {
             <ul className="py-2 text-base font-medium">
               <li><Link href="/products" className="block px-4 py-3 hover:bg-kraft-50">Boutique</Link></li>
               <li><Link href="/categories" className="block px-4 py-3 hover:bg-kraft-50">Catégories</Link></li>
+              <li><Link href="/devis" className="block px-4 py-3 hover:bg-kraft-50">Devis</Link></li>
               <li><Link href="/about" className="block px-4 py-3 hover:bg-kraft-50">À propos</Link></li>
               <li><Link href="/contact" className="block px-4 py-3 hover:bg-kraft-50">Contact</Link></li>
               <li><Link href="/cart" className="block px-4 py-3 hover:bg-kraft-50">Panier ({count})</Link></li>
