@@ -25,6 +25,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Données invalides" }, { status: 400 });
   }
   const d = parsed.data;
+  // When a valid promo price is provided, the upstream `price` column carries
+  // the *effective* (post-promo) price so the api-gateway computes order
+  // totals correctly. The regular price is preserved as an extra so the
+  // admin form and the storefront can show the crossed-out price.
+  const promo = d.promoPrice != null && d.promoPrice < d.price ? d.promoPrice : null;
+  const effectivePrice = promo ?? d.price;
   try {
     const product = await apiClient.createProduct(session.user.apiToken, {
       name: d.name,
@@ -36,8 +42,10 @@ export async function POST(req: Request) {
         heightCm: d.heightCm,
         wallType: d.wallType,
         isFeatured: d.isFeatured,
+        regularPrice: d.price,
+        promoPrice: promo ?? undefined,
       }),
-      price: d.price,
+      price: effectivePrice,
       stock: d.stock,
       category_id: d.categoryId,
       image_url: d.imageUrl ?? null,

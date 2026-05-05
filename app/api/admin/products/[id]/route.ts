@@ -15,6 +15,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Données invalides" }, { status: 400 });
   }
   const d = parsed.data;
+  // See POST /api/admin/products for the rationale on `effectivePrice`.
+  const promo = d.promoPrice != null && d.promoPrice < d.price ? d.promoPrice : null;
+  const effectivePrice = promo ?? d.price;
   try {
     const product = await apiClient.updateProduct(session.user.apiToken, id, {
       name: d.name,
@@ -26,8 +29,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         heightCm: d.heightCm,
         wallType: d.wallType,
         isFeatured: d.isFeatured,
+        regularPrice: d.price,
+        promoPrice: promo ?? undefined,
       }),
-      price: d.price,
+      price: effectivePrice,
       stock: d.stock,
       category_id: d.categoryId,
       image_url: d.imageUrl ?? null,

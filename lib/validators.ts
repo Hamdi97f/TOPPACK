@@ -16,30 +16,46 @@ export const registerSchema = z.object({
   password: z.string().min(8).max(200),
 });
 
-export const productSchema = z.object({
-  name: z.string().min(2).max(200),
-  slug: z.string().min(2).max(200).regex(/^[a-z0-9-]+$/),
-  description: z.string().min(1).max(5000),
-  sku: z.string().min(1).max(100),
-  lengthCm: z.coerce.number().positive().max(10000),
-  widthCm: z.coerce.number().positive().max(10000),
-  heightCm: z.coerce.number().positive().max(10000),
-  wallType: z.string().min(1).max(100),
-  price: z.coerce.number().nonnegative().max(1_000_000),
-  stock: z.coerce.number().int().nonnegative().max(10_000_000),
-  imageUrl: z
-    .string()
-    .max(500)
-    .refine(
-      (v) => v === "" || /^https?:\/\//i.test(v) || v.startsWith("/api/files/"),
-      "L'URL de l'image doit être absolue (http/https) ou pointer vers /api/files/…"
-    )
-    .optional()
-    .nullable(),
-  isActive: z.coerce.boolean().optional(),
-  isFeatured: z.coerce.boolean().optional(),
-  categoryId: z.string().min(1),
-});
+export const productSchema = z
+  .object({
+    name: z.string().min(2).max(200),
+    slug: z.string().min(2).max(200).regex(/^[a-z0-9-]+$/),
+    description: z.string().min(1).max(5000),
+    sku: z.string().min(1).max(100),
+    lengthCm: z.coerce.number().positive().max(10000),
+    widthCm: z.coerce.number().positive().max(10000),
+    heightCm: z.coerce.number().positive().max(10000),
+    wallType: z.string().min(1).max(100),
+    price: z.coerce.number().nonnegative().max(1_000_000),
+    // Optional promotional price. When set (> 0) it must be strictly lower than
+    // the regular price; an empty string / null / 0 means "no promo".
+    promoPrice: z
+      .union([z.coerce.number().nonnegative().max(1_000_000), z.literal(""), z.null(), z.undefined()])
+      .transform((v) => (typeof v === "number" && v > 0 ? v : null))
+      .optional(),
+    stock: z.coerce.number().int().nonnegative().max(10_000_000),
+    imageUrl: z
+      .string()
+      .max(500)
+      .refine(
+        (v) => v === "" || /^https?:\/\//i.test(v) || v.startsWith("/api/files/"),
+        "L'URL de l'image doit être absolue (http/https) ou pointer vers /api/files/…"
+      )
+      .optional()
+      .nullable(),
+    isActive: z.coerce.boolean().optional(),
+    isFeatured: z.coerce.boolean().optional(),
+    categoryId: z.string().min(1),
+  })
+  .superRefine((val, ctx) => {
+    if (val.promoPrice != null && val.promoPrice >= val.price) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["promoPrice"],
+        message: "Le prix promo doit être strictement inférieur au prix.",
+      });
+    }
+  });
 
 export const categorySchema = z.object({
   name: z.string().min(2).max(100),

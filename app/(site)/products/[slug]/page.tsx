@@ -31,7 +31,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <div>
         {category && <div className="text-sm text-kraft-600">{category.name}</div>}
         <h1 className="text-3xl font-bold text-kraft-900 mt-1">{product.name}</h1>
-        <div className="text-2xl font-bold text-kraft-800 mt-3">{formatPrice(product.price)}</div>
+        {product.promoPrice != null && product.regularPrice != null ? (
+          <div className="mt-3 flex items-baseline gap-3">
+            <span className="text-2xl font-bold text-red-700">{formatPrice(product.price)}</span>
+            <span className="text-lg text-kraft-500 line-through">{formatPrice(product.regularPrice)}</span>
+            <span className="bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">Promo</span>
+          </div>
+        ) : (
+          <div className="text-2xl font-bold text-kraft-800 mt-3">{formatPrice(product.price)}</div>
+        )}
         <p className="mt-4 text-kraft-800 whitespace-pre-line">{product.description}</p>
 
         <table className="mt-6 w-full text-sm card overflow-hidden">

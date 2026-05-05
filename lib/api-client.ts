@@ -266,6 +266,14 @@ export interface ProductExtras {
   heightCm?: number;
   wallType?: string;
   isFeatured?: boolean;
+  // Promotional pricing. When `promoPrice` is set (> 0 and < `regularPrice`)
+  // it is the actual sale price charged to customers; the upstream `price`
+  // column always carries the *effective* (post-promo) price so the
+  // api-gateway computes order totals correctly. `regularPrice` is the
+  // crossed-out marketing price shown to customers and used to repopulate
+  // the admin form.
+  regularPrice?: number;
+  promoPrice?: number;
 }
 
 export function packProductDescription(text: string, extras: ProductExtras): string {
@@ -298,7 +306,12 @@ export interface ProductCustomerView {
   id: string;
   name: string;
   description: string;
+  /** Effective sale price (= promoPrice when a promo is active, otherwise the regular price). */
   price: number;
+  /** Regular (crossed-out) price when a promo is active; null otherwise. */
+  regularPrice: number | null;
+  /** Promotional price when set (> 0 and strictly lower than regular); null otherwise. */
+  promoPrice: number | null;
   stock: number;
   categoryId: string | null;
   imageUrl: string | null;
@@ -314,11 +327,25 @@ export interface ProductCustomerView {
 
 export function adaptProduct(p: ApiProduct): ProductCustomerView {
   const { text, extras } = unpackProductDescription(p.description);
+  const upstreamPrice = Number(p.price ?? 0);
+  const regular =
+    typeof extras.regularPrice === "number" && extras.regularPrice > 0
+      ? extras.regularPrice
+      : null;
+  const promo =
+    typeof extras.promoPrice === "number" &&
+    extras.promoPrice > 0 &&
+    regular != null &&
+    extras.promoPrice < regular
+      ? extras.promoPrice
+      : null;
   return {
     id: p.id,
     name: p.name,
     description: text,
-    price: Number(p.price ?? 0),
+    price: upstreamPrice,
+    regularPrice: promo != null ? regular : null,
+    promoPrice: promo,
     stock: Number(p.stock ?? 0),
     categoryId: p.category_id,
     imageUrl: resolveImageUrl(p.image_url),
