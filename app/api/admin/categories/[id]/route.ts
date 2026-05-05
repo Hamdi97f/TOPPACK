@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, CACHE_TAGS } from "@/lib/api-client";
 import { categorySchema } from "@/lib/validators";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +19,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       name: parsed.data.name,
       description: parsed.data.description ?? null,
     });
+    revalidateTag(CACHE_TAGS.categories);
     return NextResponse.json({ category });
   } catch (err) {
     return apiErrorResponse(err, "Échec de la mise à jour de la catégorie");
@@ -30,6 +32,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   try {
     await apiClient.deleteCategory(session.user.apiToken, id);
+    revalidateTag(CACHE_TAGS.categories);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return apiErrorResponse(err, "Échec de la suppression de la catégorie");

@@ -78,6 +78,14 @@ interface RequestOptions {
   body?: unknown;
   formData?: FormData;
   query?: Record<string, string | undefined>;
+  /**
+   * Optional Next.js fetch cache directive. Defaults to `"no-store"` so that
+   * mutations and authenticated reads always hit the upstream gateway.
+   * Public read methods opt-in to revalidation by passing
+   * `next: { revalidate, tags }` (in which case `cache` should be left unset).
+   */
+  cache?: RequestCache;
+  next?: { revalidate?: number | false; tags?: string[] };
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -98,12 +106,19 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       if (v !== undefined) url.searchParams.set(k, v);
     }
   }
-  const res = await fetch(url.toString(), {
+  // When the caller opts into Next.js fetch cache via `next: { revalidate, tags }`,
+  // we must NOT pass an explicit `cache` field — the two are mutually exclusive.
+  const fetchInit: RequestInit & { next?: { revalidate?: number | false; tags?: string[] } } = {
     method: opts.method || "GET",
     headers,
     body,
-    cache: "no-store",
-  });
+  };
+  if (opts.next) {
+    fetchInit.next = opts.next;
+  } else {
+    fetchInit.cache = opts.cache ?? "no-store";
+  }
+  const res = await fetch(url.toString(), fetchInit);
   const text = await res.text();
   let data: unknown = null;
   if (text) {
@@ -193,6 +208,38 @@ async function authedRequest<T>(path: string, opts: RequestOptions & { token?: s
     }
     throw err;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Public-read cache configuration
+// ---------------------------------------------------------------------------
+
+/**
+ * Cache tags used by storefront read methods. Admin mutate routes must call
+ * `revalidateTag(...)` with the matching tag after a successful write so that
+ * customer-facing pages see updates promptly instead of waiting for the
+ * timed revalidation window to elapse.
+ */
+export const CACHE_TAGS = {
+  products: "toppack:products",
+  categories: "toppack:categories",
+  siteSettings: "toppack:site-settings",
+} as const;
+
+/** Time-based revalidation window (seconds) for anonymous catalog reads. */
+const PUBLIC_REVALIDATE_SECONDS = 60;
+
+/**
+ * Build a `next` fetch option for an anonymous public read. Returns
+ * `undefined` when an authenticated token is supplied so admin/account reads
+ * remain uncached.
+ */
+function publicReadCache(
+  token: string | null | undefined,
+  tags: string[]
+): { revalidate: number; tags: string[] } | undefined {
+  if (token) return undefined;
+  return { revalidate: PUBLIC_REVALIDATE_SECONDS, tags };
 }
 
 // ---------------------------------------------------------------------------
@@ -392,14 +439,22 @@ export const apiClient = {
 
   // Categories
   async listCategories(token?: string | null): Promise<ApiCategory[]> {
-    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", { token });
+    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", {
+      token,
+      next: publicReadCache(token, [CACHE_TAGS.categories]),
+    });
     // Hide internal records used as side-channel storage (e.g. checkout
     // settings) so they never appear in storefront or admin category lists.
     return (r.categories || []).filter((c) => c.name !== SETTINGS_CATEGORY_NAME);
   },
   /** Internal: includes the hidden `__settings__` record. */
   async _listAllCategories(token?: string | null): Promise<ApiCategory[]> {
-    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", { token });
+    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", {
+      token,
+      // Settings change rarely — share the categories cache and rely on
+      // explicit `revalidateTag` invalidation from admin write paths.
+      next: publicReadCache(token, [CACHE_TAGS.categories, CACHE_TAGS.siteSettings]),
+    });
     return r.categories || [];
   },
   async createCategory(token: string, body: { name: string; description?: string | null }): Promise<ApiCategory> {
@@ -414,11 +469,17 @@ export const apiClient = {
 
   // Products
   async listProducts(token?: string | null): Promise<ApiProduct[]> {
-    const r = await authedRequest<{ products: ApiProduct[] }>("/products", { token });
+    const r = await authedRequest<{ products: ApiProduct[] }>("/products", {
+      token,
+      next: publicReadCache(token, [CACHE_TAGS.products]),
+    });
     return r.products || [];
   },
   async getProduct(token: string | null | undefined, id: string): Promise<ApiProduct> {
-    return authedRequest(`/products/${encodeURIComponent(id)}`, { token });
+    return authedRequest(`/products/${encodeURIComponent(id)}`, {
+      token,
+      next: publicReadCache(token, [CACHE_TAGS.products]),
+    });
   },
   async createProduct(token: string, body: Partial<ApiProduct>): Promise<ApiProduct> {
     return authedRequest("/products", { method: "POST", token, body });

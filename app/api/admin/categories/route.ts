@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, CACHE_TAGS } from "@/lib/api-client";
 import { categorySchema } from "@/lib/validators";
 
 export async function GET() {
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       name: parsed.data.name,
       description: parsed.data.description ?? null,
     });
+    revalidateTag(CACHE_TAGS.categories);
     return NextResponse.json({ category }, { status: 201 });
   } catch (err) {
     return apiErrorResponse(err, "Échec de la création de la catégorie");

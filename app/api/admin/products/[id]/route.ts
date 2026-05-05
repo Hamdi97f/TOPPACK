@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
-import { apiClient, packProductDescription } from "@/lib/api-client";
+import { apiClient, CACHE_TAGS, packProductDescription } from "@/lib/api-client";
 import { productSchema } from "@/lib/validators";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +33,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       image_url: d.imageUrl ?? null,
       is_active: d.isActive ?? true,
     });
+    revalidateTag(CACHE_TAGS.products);
     return NextResponse.json({ product });
   } catch (err) {
     return apiErrorResponse(err, "Échec de la mise à jour du produit");
@@ -44,6 +46,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   try {
     await apiClient.deleteProduct(session.user.apiToken, id);
+    revalidateTag(CACHE_TAGS.products);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return apiErrorResponse(err, "Échec de la suppression du produit");
