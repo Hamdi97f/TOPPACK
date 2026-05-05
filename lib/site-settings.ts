@@ -470,6 +470,80 @@ export function getDevisFieldConfig(
 }
 
 // ---------------------------------------------------------------------------
+// Live-edit section (admin-supplied overrides for pre-marked editable regions)
+// ---------------------------------------------------------------------------
+
+/**
+ * `LiveEditsSettings` stores admin-supplied overrides for regions declared in
+ * `lib/live-edit/registry.ts`. Each region (keyed by its stable `editId`) maps
+ * field keys to scalar override values (string | number).
+ *
+ * Validation against the registry happens in `lib/live-edit/editable.ts`
+ * (`normaliseLiveEditsAgainstRegistry`) — the storage-level normaliser here
+ * only enforces shape (object of objects of scalars) and a hard size cap so a
+ * malformed or oversized payload cannot be persisted into the api-gateway
+ * category description.
+ */
+export type LiveEditFieldValue = string | number;
+export type LiveEditRegionOverrides = Record<string, LiveEditFieldValue>;
+export type LiveEditsSettings = Record<string, LiveEditRegionOverrides>;
+
+export const LIVE_EDITS_MAX_BYTES = 64 * 1024;
+export const LIVE_EDITS_MAX_REGIONS = 200;
+export const LIVE_EDITS_MAX_FIELDS_PER_REGION = 32;
+export const LIVE_EDITS_MAX_STRING_LENGTH = 2000;
+
+export function defaultLiveEditsSettings(): LiveEditsSettings {
+  return {};
+}
+
+/**
+ * Storage-level normaliser. Drops anything that isn't a plain object of plain
+ * objects of string/number scalars, clamps strings, and aborts (returns the
+ * default) if the result would exceed the size or count caps. Registry-level
+ * validation (allowed ids / fields / value ranges) is applied separately by
+ * `normaliseLiveEditsAgainstRegistry`.
+ */
+export function normaliseLiveEditsSettings(input: unknown): LiveEditsSettings {
+  if (!input || typeof input !== "object") return defaultLiveEditsSettings();
+  const r = input as Record<string, unknown>;
+  const out: LiveEditsSettings = {};
+  let regionCount = 0;
+  for (const [id, raw] of Object.entries(r)) {
+    if (regionCount >= LIVE_EDITS_MAX_REGIONS) break;
+    if (typeof id !== "string" || id.length === 0 || id.length > 200) continue;
+    if (!raw || typeof raw !== "object") continue;
+    const fields: LiveEditRegionOverrides = {};
+    let fieldCount = 0;
+    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+      if (fieldCount >= LIVE_EDITS_MAX_FIELDS_PER_REGION) break;
+      if (typeof key !== "string" || key.length === 0 || key.length > 100) continue;
+      if (typeof value === "string") {
+        fields[key] = value.slice(0, LIVE_EDITS_MAX_STRING_LENGTH);
+        fieldCount++;
+      } else if (typeof value === "number" && Number.isFinite(value)) {
+        fields[key] = value;
+        fieldCount++;
+      }
+    }
+    if (Object.keys(fields).length > 0) {
+      out[id] = fields;
+      regionCount++;
+    }
+  }
+  // Hard size cap on the serialized payload to protect the api-gateway
+  // category description (which carries the whole SiteSettings JSON).
+  try {
+    if (JSON.stringify(out).length > LIVE_EDITS_MAX_BYTES) {
+      return defaultLiveEditsSettings();
+    }
+  } catch {
+    return defaultLiveEditsSettings();
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -481,6 +555,7 @@ export interface SiteSettings {
   branding: BrandingSettings;
   shipping: ShippingSettings;
   devis: DevisFormSettings;
+  liveEdits: LiveEditsSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -492,6 +567,7 @@ export function defaultSiteSettings(): SiteSettings {
     branding: defaultBrandingSettings(),
     shipping: defaultShippingSettings(),
     devis: defaultDevisFormSettings(),
+    liveEdits: defaultLiveEditsSettings(),
   };
 }
 
@@ -506,6 +582,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     branding: normaliseBrandingSettings(r.branding),
     shipping: normaliseShippingSettings(r.shipping),
     devis: normaliseDevisFormSettings(r.devis),
+    liveEdits: normaliseLiveEditsSettings(r.liveEdits),
   };
 }
 

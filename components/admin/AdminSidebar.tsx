@@ -10,6 +10,7 @@ const links = [
   { href: "/admin/devis", label: "Demandes de devis" },
   { href: "/admin/products", label: "Produits" },
   { href: "/admin/categories", label: "Catégories" },
+  { href: "/admin/live-edit", label: "Édition en direct" },
   { href: "/admin/settings/checkout", label: "Commande" },
   { href: "/admin/settings/devis", label: "Formulaire de devis" },
   { href: "/admin/settings/shipping", label: "Frais de livraison" },
