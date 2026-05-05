@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { readJsonOrSignOut } from "@/lib/client-fetch";
 
 export type ProductFormProduct = {
@@ -26,40 +26,57 @@ export type ProductFormCategory = { id: string; name: string };
 
 type Mode = { kind: "create" } | { kind: "edit"; product: ProductFormProduct };
 
+// Keep this in sync with MAX_BYTES in app/api/admin/products/[id]/image/route.ts.
+// Netlify Functions cap request payloads at ~6 MB after base64 encoding,
+// so we refuse anything > 4 MB client-side.
+const MAX_BYTES = 4 * 1024 * 1024;
+
 export function ProductForm({ categories, mode }: { categories: ProductFormCategory[]; mode: Mode }) {
   const router = useRouter();
   const isEdit = mode.kind === "edit";
   const initial = isEdit ? mode.product : null;
   const [imageUrl, setImageUrl] = useState<string>(initial?.imageUrl ?? "");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
-  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Manage object URL lifecycle for the staged file preview.
+  useEffect(() => {
+    if (!pendingFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    // Keep this in sync with MAX_BYTES in app/api/admin/upload/route.ts.
-    // Netlify Functions cap request payloads at ~6 MB after base64 encoding,
-    // so we refuse anything > 4 MB client-side instead of letting Netlify's
-    // proxy return a generic "Internal server error" page.
-    const MAX_BYTES = 4 * 1024 * 1024;
+    if (!file) {
+      setPendingFile(null);
+      return;
+    }
     if (file.size > MAX_BYTES) {
       alert("Fichier trop volumineux (4 Mo maximum)");
       e.target.value = "";
+      setPendingFile(null);
       return;
     }
+    setPendingFile(file);
+    setError(null);
+  }
+
+  async function uploadImageFor(productId: string, file: File): Promise<string> {
     const fd = new FormData();
     fd.append("file", file);
-    setUploading(true);
-    try {
-      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
-      const data = await readJsonOrSignOut<{ url: string }>(res);
-      setImageUrl(data.url);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Échec du téléversement");
-    } finally {
-      setUploading(false);
-    }
+    const res = await fetch(`/api/admin/products/${encodeURIComponent(productId)}/image`, {
+      method: "POST",
+      body: fd,
+    });
+    const data = await readJsonOrSignOut<{ image_url: string }>(res);
+    return data.image_url;
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -81,9 +98,15 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
       categoryId: fd.get("categoryId"),
       isActive: fd.get("isActive") === "on",
       isFeatured: fd.get("isFeatured") === "on",
+      // When a new file is staged we keep the existing `imageUrl` in the
+      // payload so an upload failure doesn't blank the product image; the
+      // subsequent per-product image upload will then atomically replace it
+      // with the new public URL.
       imageUrl: imageUrl || null,
     };
-    const url = isEdit ? `/api/admin/products/${(mode as { kind: "edit"; product: ProductFormProduct }).product.id}` : "/api/admin/products";
+    const url = isEdit
+      ? `/api/admin/products/${(mode as { kind: "edit"; product: ProductFormProduct }).product.id}`
+      : "/api/admin/products";
     const method = isEdit ? "PUT" : "POST";
     try {
       const res = await fetch(url, {
@@ -91,7 +114,33 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      await readJsonOrSignOut(res);
+      const saved = await readJsonOrSignOut<{ product?: { id: string } }>(res);
+      const productId = isEdit
+        ? (mode as { kind: "edit"; product: ProductFormProduct }).product.id
+        : saved.product?.id;
+      // If the admin staged a new file, upload it now that the product exists.
+      // The api-gateway atomically updates `image_url` on the product.
+      if (pendingFile) {
+        if (!productId) {
+          setError("Produit enregistré, mais identifiant manquant pour téléverser l'image");
+          setSubmitting(false);
+          return;
+        }
+        try {
+          const newUrl = await uploadImageFor(productId, pendingFile);
+          setImageUrl(newUrl);
+        } catch (err) {
+          // The product was saved successfully; surface the upload failure but
+          // do not lose the user's edits.
+          setError(
+            err instanceof Error
+              ? `Produit enregistré, mais échec du téléversement de l'image : ${err.message}`
+              : "Produit enregistré, mais échec du téléversement de l'image"
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
@@ -99,6 +148,8 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
       setSubmitting(false);
     }
   }
+
+  const displayedImage = previewUrl || imageUrl || null;
 
   return (
     <form onSubmit={onSubmit} className="card p-6 space-y-4 max-w-3xl">
@@ -154,12 +205,16 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
       </div>
       <div>
         <label className="label">Image</label>
-        {imageUrl && (
+        {displayedImage && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="" className="w-32 h-32 object-cover rounded mb-2" />
+          <img src={displayedImage} alt="" className="w-32 h-32 object-cover rounded mb-2" />
         )}
-        <input type="file" accept="image/*" onChange={onUpload} disabled={uploading} />
-        {uploading && <div className="text-xs text-kraft-600 mt-1">Téléversement…</div>}
+        <input type="file" accept="image/*" onChange={onPickFile} disabled={submitting} />
+        <div className="text-xs text-kraft-600 mt-1">
+          {pendingFile
+            ? `Sera téléversé à l'enregistrement : ${pendingFile.name}`
+            : "Sélectionnez une image (jpg, png, webp, gif — 4 Mo max)."}
+        </div>
       </div>
       <div className="flex gap-6">
         <label className="flex items-center gap-2">

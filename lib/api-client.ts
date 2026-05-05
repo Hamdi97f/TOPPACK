@@ -510,6 +510,24 @@ export const apiClient = {
   },
 
   /**
+   * Upload an image to the public `product-images` bucket and let the
+   * api-gateway atomically set the product's `image_url` to the resulting
+   * public URL. Returns the new public URL plus the updated product.
+   */
+  async uploadProductImage(
+    token: string,
+    productId: string,
+    file: File
+  ): Promise<{ image_url: string; product: ApiProduct }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return authedRequest(
+      `/products/${encodeURIComponent(productId)}/image`,
+      { method: "POST", token, formData: fd }
+    );
+  },
+
+  /**
    * Fetch a file's bytes from the api-gateway by id, returning the raw
    * `Response` so callers can stream it (e.g. proxy through a Next.js route).
    *
