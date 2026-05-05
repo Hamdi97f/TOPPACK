@@ -3,7 +3,12 @@ import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
 import { apiClient } from "@/lib/api-client";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+// Netlify synchronous Functions cap the total request payload at ~6 MB after
+// base64 encoding. Multipart/form-data plus that base64 inflation means a raw
+// file much larger than ~4 MB will be rejected by Netlify's proxy with a
+// generic HTML "Internal server error" page — before our handler ever runs.
+// Cap raw bytes at 4 MB to stay safely under that platform limit.
+const MAX_BYTES = 4 * 1024 * 1024; // 4 MB
 
 export async function POST(req: Request) {
   const { session, response } = await requireAdmin();
@@ -14,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Aucun fichier fourni" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "Fichier trop volumineux (5 Mo maximum)" }, { status: 413 });
+    return NextResponse.json({ error: "Fichier trop volumineux (4 Mo maximum)" }, { status: 413 });
   }
   if (!ALLOWED.has(file.type)) {
     return NextResponse.json({ error: "Type de fichier non pris en charge" }, { status: 415 });

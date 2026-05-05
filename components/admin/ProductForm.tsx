@@ -38,6 +38,16 @@ export function ProductForm({ categories, mode }: { categories: ProductFormCateg
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Keep this in sync with MAX_BYTES in app/api/admin/upload/route.ts.
+    // Netlify Functions cap request payloads at ~6 MB after base64 encoding,
+    // so we refuse anything > 4 MB client-side instead of letting Netlify's
+    // proxy return a generic "Internal server error" page.
+    const MAX_BYTES = 4 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      alert("Fichier trop volumineux (4 Mo maximum)");
+      e.target.value = "";
+      return;
+    }
     const fd = new FormData();
     fd.append("file", file);
     setUploading(true);
