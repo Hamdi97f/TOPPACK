@@ -53,7 +53,9 @@ export function validateFieldValue(
       const max = field.maxLength ?? 500;
       // Strip control characters that have no business in user-facing copy
       // (they survive JSON round-tripping but can break CSS selectors and
-      // confuse the editor preview). Keep newlines and tabs.
+      // confuse the editor preview). The character class below intentionally
+      // preserves whitespace that may legitimately appear in copy: tab
+      // (\x09), newline (\x0A) and carriage return (\x0D).
       const cleaned = value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
       return cleaned.slice(0, max);
     }
