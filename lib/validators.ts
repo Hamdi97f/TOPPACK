@@ -17,7 +17,15 @@ export const productSchema = z.object({
   wallType: z.string().min(1).max(100),
   price: z.coerce.number().nonnegative().max(1_000_000),
   stock: z.coerce.number().int().nonnegative().max(10_000_000),
-  imageUrl: z.string().max(500).optional().nullable(),
+  imageUrl: z
+    .string()
+    .max(500)
+    .refine(
+      (v) => v === "" || /^https?:\/\//i.test(v) || v.startsWith("/api/files/"),
+      "L'URL de l'image doit être absolue (http/https) ou pointer vers /api/files/…"
+    )
+    .optional()
+    .nullable(),
   isActive: z.coerce.boolean().optional(),
   isFeatured: z.coerce.boolean().optional(),
   categoryId: z.string().min(1),

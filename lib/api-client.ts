@@ -252,7 +252,7 @@ export function adaptProduct(p: ApiProduct): ProductCustomerView {
     price: Number(p.price ?? 0),
     stock: Number(p.stock ?? 0),
     categoryId: p.category_id,
-    imageUrl: p.image_url,
+    imageUrl: resolveImageUrl(p.image_url),
     isActive: p.is_active,
     slug: extras.slug || slugify(p.name),
     sku: extras.sku || "",
@@ -444,4 +444,76 @@ export const apiClient = {
     fd.append("file", file);
     return authedRequest("/upload-file", { method: "POST", token, formData: fd });
   },
+
+  /**
+   * Fetch a file's bytes from the api-gateway by id, returning the raw
+   * `Response` so callers can stream it (e.g. proxy through a Next.js route).
+   *
+   * The remote schema does not document the download path explicitly; we try
+   * the common candidates in order. The first 2xx response wins. Returns
+   * `null` if the file is not found.
+   */
+  async fetchFile(token: string | null | undefined, id: string): Promise<Response | null> {
+    let bearer = token;
+    if (!bearer) bearer = await getServiceToken();
+    const headers: Record<string, string> = {
+      "x-api-key": apiKey(),
+      Authorization: `Bearer ${bearer}`,
+    };
+    const candidates = [
+      `/download-file/${encodeURIComponent(id)}`,
+      `/files/${encodeURIComponent(id)}`,
+      `/file/${encodeURIComponent(id)}`,
+    ];
+    let lastStatus = 404;
+    for (const path of candidates) {
+      const res = await fetch(baseUrl() + path, { headers, cache: "no-store" });
+      if (res.ok) return res;
+      lastStatus = res.status;
+      // Don't burn through candidates on auth errors — refresh & retry once.
+      if (res.status === 401 && !token) {
+        const fresh = await getServiceToken(true);
+        const retry = await fetch(baseUrl() + path, {
+          headers: { ...headers, Authorization: `Bearer ${fresh}` },
+          cache: "no-store",
+        });
+        if (retry.ok) return retry;
+        lastStatus = retry.status;
+      }
+    }
+    if (lastStatus === 404) return null;
+    throw new ApiError(lastStatus, `Failed to download file ${id}`);
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Image URL helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when `value` is a UUID-shaped string. The api-gateway used to
+ * return bare file ids from `/upload-file` which were mistakenly persisted as
+ * `image_url` on some products. Those values are not loadable by the browser
+ * and need to be rewritten to the `/api/files/{id}` proxy URL on read.
+ */
+export function isFileIdLike(value: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
+}
+
+/**
+ * Normalise a stored `image_url` into a value the browser can load. Absolute
+ * `http(s)://` URLs and existing `/api/files/...` paths pass through. Bare
+ * file ids (UUIDs) are rewritten to point at the local file proxy. Anything
+ * else (including null/empty) yields `null`.
+ */
+export function resolveImageUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("/api/files/")) return trimmed;
+  if (isFileIdLike(trimmed)) return `/api/files/${encodeURIComponent(trimmed)}`;
+  return null;
+}
