@@ -8,7 +8,7 @@ import {
   buildShippingAddress,
   getServiceToken,
 } from "@/lib/api-client";
-import { checkoutSchema } from "@/lib/validators";
+import { buildCheckoutSchema } from "@/lib/validators";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -19,7 +19,14 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const parsed = checkoutSchema.safeParse(body);
+
+  // Always re-read the admin's current configuration server-side. The client
+  // never controls which fields are required or which payment methods are
+  // accepted.
+  const settings = await apiClient.getCheckoutSettings();
+  const schema = buildCheckoutSchema(settings);
+
+  const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Invalid order data" },

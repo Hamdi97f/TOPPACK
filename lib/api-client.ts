@@ -30,6 +30,13 @@ import type {
   ApiUser,
 } from "@/types/api";
 import { slugify } from "@/lib/utils";
+import {
+  CheckoutSettings,
+  defaultCheckoutSettings,
+  packSettingsDescription,
+  SETTINGS_CATEGORY_NAME,
+  unpackSettingsDescription,
+} from "@/lib/checkout-settings";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -380,6 +387,13 @@ export const apiClient = {
   // Categories
   async listCategories(token?: string | null): Promise<ApiCategory[]> {
     const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", { token });
+    // Hide internal records used as side-channel storage (e.g. checkout
+    // settings) so they never appear in storefront or admin category lists.
+    return (r.categories || []).filter((c) => c.name !== SETTINGS_CATEGORY_NAME);
+  },
+  /** Internal: includes the hidden `__settings__` record. */
+  async _listAllCategories(token?: string | null): Promise<ApiCategory[]> {
+    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", { token });
     return r.categories || [];
   },
   async createCategory(token: string, body: { name: string; description?: string | null }): Promise<ApiCategory> {
@@ -436,6 +450,33 @@ export const apiClient = {
     body: { status?: string; notes?: string; items?: Array<{ product_id: string; quantity: number; unit_price?: number }> }
   ): Promise<ApiOrder> {
     return authedRequest(`/orders/${encodeURIComponent(id)}`, { method: "PUT", token, body });
+  },
+
+  // Settings (stored as a hidden category whose description carries JSON)
+  async getCheckoutSettings(token?: string | null): Promise<CheckoutSettings> {
+    try {
+      const cats = await this._listAllCategories(token);
+      const record = cats.find((c) => c.name === SETTINGS_CATEGORY_NAME);
+      if (!record) return defaultCheckoutSettings();
+      return unpackSettingsDescription(record.description);
+    } catch {
+      return defaultCheckoutSettings();
+    }
+  },
+
+  async setCheckoutSettings(token: string, settings: CheckoutSettings): Promise<CheckoutSettings> {
+    const cats = await this._listAllCategories(token);
+    const record = cats.find((c) => c.name === SETTINGS_CATEGORY_NAME);
+    const description = packSettingsDescription(settings);
+    if (record) {
+      await this.updateCategory(token, record.id, {
+        name: SETTINGS_CATEGORY_NAME,
+        description,
+      });
+    } else {
+      await this.createCategory(token, { name: SETTINGS_CATEGORY_NAME, description });
+    }
+    return settings;
   },
 
   // Storage
