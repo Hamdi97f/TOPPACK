@@ -36,7 +36,7 @@ export default async function HomePage() {
             </p>
             <div className="mt-6 flex gap-3">
               <Link href="/products" className="btn-primary">Acheter des cartons</Link>
-              <Link href="/contact" className="btn-secondary">Demander un devis</Link>
+              <Link href="/devis" className="btn-secondary">Demander un devis</Link>
             </div>
           </div>
           <div className="hidden md:flex justify-center">

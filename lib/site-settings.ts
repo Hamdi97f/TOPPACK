@@ -348,6 +348,128 @@ export function computeShippingFee(totalQuantity: number, settings: ShippingSett
 }
 
 // ---------------------------------------------------------------------------
+// Devis form section (configurable fields + minimum allowed quantity)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fields of the public "demande de devis" form whose visibility / required
+ * status the admin can toggle. Identity fields and the carton specs are kept
+ * configurable so the admin can simplify the form for casual visitors.
+ *
+ * Note: the "model" select, the three dimensions and the "quantity" input
+ * are always shown and required — they are intrinsic to a devis. Quantity is
+ * controlled separately via `minQuantity`.
+ */
+export const DEVIS_FORM_FIELDS = [
+  "customerName",
+  "customerEmail",
+  "customerPhone",
+  "company",
+  "ondulation",
+  "cannelure",
+  "color",
+  "printing",
+  "message",
+] as const;
+export type DevisFieldKey = (typeof DEVIS_FORM_FIELDS)[number];
+
+export interface DevisFieldConfig {
+  field: DevisFieldKey;
+  visible: boolean;
+  required: boolean;
+}
+
+export interface DevisFormSettings {
+  fields: DevisFieldConfig[];
+  /** Minimum quantity the customer can request (inclusive). Always ≥ 1. */
+  minQuantity: number;
+}
+
+const DEVIS_FIELD_LABELS: Record<DevisFieldKey, string> = {
+  customerName: "Nom complet",
+  customerEmail: "E-mail",
+  customerPhone: "Téléphone",
+  company: "Société",
+  ondulation: "Type d'ondulation",
+  cannelure: "Cannelure",
+  color: "Couleur du carton",
+  printing: "Option d'impression",
+  message: "Message complémentaire",
+};
+
+export function devisFieldLabel(key: DevisFieldKey): string {
+  return DEVIS_FIELD_LABELS[key];
+}
+
+/** Default required state mirrors the historical (pre-settings) form. */
+const DEVIS_DEFAULT_REQUIRED: Record<DevisFieldKey, boolean> = {
+  customerName: true,
+  customerEmail: true,
+  customerPhone: true,
+  company: false,
+  ondulation: true,
+  cannelure: true,
+  color: true,
+  printing: false,
+  message: false,
+};
+
+export function defaultDevisFormSettings(): DevisFormSettings {
+  return {
+    fields: DEVIS_FORM_FIELDS.map((field) => ({
+      field,
+      visible: true,
+      required: DEVIS_DEFAULT_REQUIRED[field],
+    })),
+    minQuantity: 1,
+  };
+}
+
+function isDevisFieldKey(value: unknown): value is DevisFieldKey {
+  return typeof value === "string" && (DEVIS_FORM_FIELDS as readonly string[]).includes(value);
+}
+
+export function normaliseDevisFormSettings(input: unknown): DevisFormSettings {
+  const defaults = defaultDevisFormSettings();
+  if (!input || typeof input !== "object") return defaults;
+  const obj = input as Record<string, unknown>;
+
+  const incoming = Array.isArray(obj.fields) ? obj.fields : [];
+  const byKey = new Map<DevisFieldKey, DevisFieldConfig>();
+  for (const raw of incoming) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    if (!isDevisFieldKey(r.field)) continue;
+    const visible = r.visible !== false;
+    const required = visible && r.required === true;
+    byKey.set(r.field, { field: r.field, visible, required });
+  }
+  const fields: DevisFieldConfig[] = DEVIS_FORM_FIELDS.map(
+    (key) => byKey.get(key) ?? defaults.fields.find((f) => f.field === key)!
+  );
+
+  let minQuantity = Math.floor(Number(obj.minQuantity));
+  if (!Number.isFinite(minQuantity) || minQuantity < 1) minQuantity = 1;
+  if (minQuantity > 10_000_000) minQuantity = 10_000_000;
+
+  return { fields, minQuantity };
+}
+
+/** Convenience: lookup a field's config (visible/required) from the settings. */
+export function getDevisFieldConfig(
+  settings: DevisFormSettings,
+  key: DevisFieldKey
+): DevisFieldConfig {
+  return (
+    settings.fields.find((f) => f.field === key) ?? {
+      field: key,
+      visible: true,
+      required: DEVIS_DEFAULT_REQUIRED[key],
+    }
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -358,6 +480,7 @@ export interface SiteSettings {
   account: AccountSettings;
   branding: BrandingSettings;
   shipping: ShippingSettings;
+  devis: DevisFormSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -368,6 +491,7 @@ export function defaultSiteSettings(): SiteSettings {
     account: defaultAccountSettings(),
     branding: defaultBrandingSettings(),
     shipping: defaultShippingSettings(),
+    devis: defaultDevisFormSettings(),
   };
 }
 
@@ -381,6 +505,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     account: normaliseAccountSettings(r.account),
     branding: normaliseBrandingSettings(r.branding),
     shipping: normaliseShippingSettings(r.shipping),
+    devis: normaliseDevisFormSettings(r.devis),
   };
 }
 
