@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { ORDER_STATUSES, PAYMENT_METHODS } from "./utils";
 import type { CheckoutSettings } from "./checkout-settings";
+import {
+  CANNELURE_TYPES,
+  CARTON_COLORS,
+  DEVIS_STATUSES,
+  FEFCO_MODELS,
+  ONDULATION_OPTIONS,
+} from "./devis";
 
 export const registerSchema = z.object({
   email: z.string().email().max(200),
@@ -130,4 +137,59 @@ export const adminOrderCreateSchema = z.object({
   paymentMethod: z.enum(PAYMENT_METHODS).default("CASH_ON_DELIVERY"),
   status: z.enum(ORDER_STATUSES).optional(),
   items: z.array(checkoutItemSchema).min(1).max(100),
+});
+
+// ---------------------------------------------------------------------------
+// Demande de devis (quote request)
+// ---------------------------------------------------------------------------
+
+/**
+ * Schema for the public-facing quote request form. Field constraints are kept
+ * loose where it makes sense (the customer doesn't always know exact values)
+ * but every input is bounded to keep the upstream payload small and prevent
+ * abuse.
+ */
+export const devisRequestSchema = z
+  .object({
+    customerName: z.string().trim().min(2, "Nom requis").max(200),
+    customerEmail: z.string().trim().email("E-mail invalide").max(200),
+    customerPhone: z.string().trim().min(3, "Téléphone requis").max(50),
+    company: z.string().trim().max(200).optional().default(""),
+    model: z.enum(FEFCO_MODELS),
+    modelOther: z.string().trim().max(200).optional().default(""),
+    lengthCm: z.coerce.number().positive("Longueur requise").max(10000),
+    widthCm: z.coerce.number().positive("Largeur requise").max(10000),
+    heightCm: z.coerce.number().positive("Hauteur requise").max(10000),
+    ondulation: z.enum(ONDULATION_OPTIONS),
+    cannelure: z.enum(CANNELURE_TYPES),
+    color: z.enum(CARTON_COLORS),
+    printing: z.coerce.boolean().optional().default(false),
+    logoUrl: z
+      .string()
+      .max(500)
+      .refine(
+        (v) => v === "" || v.startsWith("/api/files/"),
+        "Le logo doit être téléversé via le formulaire."
+      )
+      .optional()
+      .default(""),
+    logoFileName: z.string().trim().max(200).optional().default(""),
+    quantity: z.coerce.number().int().positive("Quantité requise").max(10_000_000),
+    message: z.string().trim().max(2000).optional().default(""),
+  })
+  .superRefine((val, ctx) => {
+    if (val.model === "Autre" && !val.modelOther) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["modelOther"],
+        message: "Précisez le modèle souhaité.",
+      });
+    }
+  });
+
+export type DevisRequestInput = z.infer<typeof devisRequestSchema>;
+
+export const devisStatusUpdateSchema = z.object({
+  status: z.enum(DEVIS_STATUSES).optional(),
+  internalNotes: z.string().max(5000).optional(),
 });
