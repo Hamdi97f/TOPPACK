@@ -33,3 +33,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   return updateStatus(req, id);
 }
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { session, response } = await requireAdmin();
+  if (response || !session) return response!;
+  const { id } = await params;
+  try {
+    const result = await apiClient.deleteOrder(session.user.apiToken, id);
+    return NextResponse.json(result);
+  } catch (err) {
+    return apiErrorResponse(err, "Échec de la suppression de la commande");
+  }
+}

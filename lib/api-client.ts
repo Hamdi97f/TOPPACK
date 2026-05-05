@@ -518,6 +518,9 @@ export const apiClient = {
   ): Promise<ApiOrder> {
     return authedRequest(`/orders/${encodeURIComponent(id)}`, { method: "PUT", token, body });
   },
+  async deleteOrder(token: string, id: string): Promise<{ success: boolean }> {
+    return authedRequest(`/orders/${encodeURIComponent(id)}`, { method: "DELETE", token });
+  },
 
   // Settings (stored as a hidden category whose description carries JSON)
   async getSiteSettings(token?: string | null): Promise<SiteSettings> {

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { apiClient } from "@/lib/api-client";
 import { formatPrice, ORDER_STATUSES, statusLabel } from "@/lib/utils";
+import { OrderDeleteButton } from "@/components/admin/OrderDeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,20 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     : all)
     .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
     .slice(0, 200);
+  const exportHref = `/api/admin/orders/export${status ? `?status=${encodeURIComponent(status)}` : ""}`;
   return (
     <div>
-      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Commandes</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+        <h1 className="text-2xl font-bold text-kraft-900">Commandes</h1>
+        <div className="flex flex-wrap gap-2">
+          <a href={exportHref} className="btn-secondary !py-1 !px-3 text-sm" download>
+            Exporter CSV
+          </a>
+          <Link href="/admin/orders/new" className="btn-primary !py-1 !px-3 text-sm">
+            Nouvelle commande
+          </Link>
+        </div>
+      </div>
       <form className="mb-4 flex items-center gap-2">
         <label htmlFor="status" className="text-sm">Statut :</label>
         <select id="status" name="status" defaultValue={status ?? ""} className="select max-w-xs">
@@ -51,7 +63,10 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 <td className="p-2 text-right">{formatPrice(Number(o.total))}</td>
                 <td className="p-2"><span className="badge bg-kraft-200 text-kraft-800">{statusLabel(o.status)}</span></td>
                 <td className="p-2 text-right">
-                  <Link href={`/admin/orders/${o.id}`} className="btn-secondary !py-1 !px-3 text-xs">Détails</Link>
+                  <div className="inline-flex items-center gap-3">
+                    <Link href={`/admin/orders/${o.id}`} className="btn-secondary !py-1 !px-3 text-xs">Détails</Link>
+                    <OrderDeleteButton id={o.id} />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -75,10 +90,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 <span className="text-kraft-600">{o.created_at ? new Date(o.created_at).toLocaleString("fr-FR") : "—"}</span>
                 <span className="font-bold text-kraft-800">{formatPrice(Number(o.total))}</span>
               </div>
-              <div className="mt-3 text-right">
-                <span className="btn-secondary !py-1 !px-3 text-xs inline-block">Détails</span>
-              </div>
             </Link>
+            <div className="mt-3 flex items-center justify-between">
+              <OrderDeleteButton id={o.id} />
+              <Link href={`/admin/orders/${o.id}`} className="btn-secondary !py-1 !px-3 text-xs">Détails</Link>
+            </div>
           </li>
         ))}
         {orders.length === 0 && (
