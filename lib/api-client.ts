@@ -37,6 +37,12 @@ import {
   SETTINGS_CATEGORY_NAME,
   unpackSettingsDescription,
 } from "@/lib/checkout-settings";
+import {
+  defaultSiteSettings,
+  packSiteSettings,
+  SiteSettings,
+  unpackSiteSettings,
+} from "@/lib/site-settings";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -453,6 +459,32 @@ export const apiClient = {
   },
 
   // Settings (stored as a hidden category whose description carries JSON)
+  async getSiteSettings(token?: string | null): Promise<SiteSettings> {
+    try {
+      const cats = await this._listAllCategories(token);
+      const record = cats.find((c) => c.name === SETTINGS_CATEGORY_NAME);
+      if (!record) return defaultSiteSettings();
+      return unpackSiteSettings(record.description);
+    } catch {
+      return defaultSiteSettings();
+    }
+  },
+
+  async setSiteSettings(token: string, settings: SiteSettings): Promise<SiteSettings> {
+    const cats = await this._listAllCategories(token);
+    const record = cats.find((c) => c.name === SETTINGS_CATEGORY_NAME);
+    const description = packSiteSettings(settings);
+    if (record) {
+      await this.updateCategory(token, record.id, {
+        name: SETTINGS_CATEGORY_NAME,
+        description,
+      });
+    } else {
+      await this.createCategory(token, { name: SETTINGS_CATEGORY_NAME, description });
+    }
+    return settings;
+  },
+
   async getCheckoutSettings(token?: string | null): Promise<CheckoutSettings> {
     try {
       const cats = await this._listAllCategories(token);
@@ -465,17 +497,8 @@ export const apiClient = {
   },
 
   async setCheckoutSettings(token: string, settings: CheckoutSettings): Promise<CheckoutSettings> {
-    const cats = await this._listAllCategories(token);
-    const record = cats.find((c) => c.name === SETTINGS_CATEGORY_NAME);
-    const description = packSettingsDescription(settings);
-    if (record) {
-      await this.updateCategory(token, record.id, {
-        name: SETTINGS_CATEGORY_NAME,
-        description,
-      });
-    } else {
-      await this.createCategory(token, { name: SETTINGS_CATEGORY_NAME, description });
-    }
+    const current = await this.getSiteSettings(token);
+    await this.setSiteSettings(token, { ...current, checkout: settings });
     return settings;
   },
 

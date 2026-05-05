@@ -76,7 +76,13 @@ export function CheckoutForm({ settings }: { settings: CheckoutSettings }) {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Échec de la commande");
+      if (!res.ok) {
+        if (data?.code === "ACCOUNT_REQUIRED") {
+          router.push("/login?callbackUrl=%2Fcheckout");
+          return;
+        }
+        throw new Error(data.error || "Échec de la commande");
+      }
       clear();
       router.push(`/orders/${data.id}/confirmation`);
     } catch (err) {

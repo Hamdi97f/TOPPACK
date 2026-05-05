@@ -9,7 +9,10 @@ const links = [
   { href: "/admin/orders", label: "Commandes" },
   { href: "/admin/products", label: "Produits" },
   { href: "/admin/categories", label: "Catégories" },
-  { href: "/admin/settings/checkout", label: "Paramètres" },
+  { href: "/admin/settings/checkout", label: "Commande" },
+  { href: "/admin/settings/contact", label: "Contact" },
+  { href: "/admin/settings/integrations", label: "Intégrations" },
+  { href: "/admin/settings/account", label: "Comptes clients" },
 ];
 
 function isActive(pathname: string, href: string) {
