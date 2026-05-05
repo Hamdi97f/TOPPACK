@@ -40,3 +40,19 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 }
+
+@layer utilities {
+  /* Lightweight top loading bar shown during route transitions */
+  .loading-bar {
+    @apply fixed top-0 left-0 z-[9999] h-0.5 w-full overflow-hidden bg-transparent pointer-events-none;
+  }
+  .loading-bar::before {
+    content: "";
+    @apply absolute top-0 left-0 h-full w-1/3 bg-kraft-700;
+    animation: loading-bar-slide 0.9s ease-in-out infinite;
+  }
+  @keyframes loading-bar-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+}
