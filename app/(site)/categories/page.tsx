@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function CategoriesPage() {
   let categories: ReturnType<typeof adaptCategory>[] = [];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, CACHE_TAGS } from "@/lib/api-client";
 import { normaliseCheckoutSettings } from "@/lib/checkout-settings";
 
 export async function GET() {
@@ -30,6 +31,7 @@ export async function PUT(req: Request) {
   }
   try {
     const saved = await apiClient.setCheckoutSettings(session.user.apiToken, settings);
+    revalidateTag(CACHE_TAGS.siteSettings);
     return NextResponse.json({ settings: saved });
   } catch (err) {
     return apiErrorResponse(err, "Échec de l'enregistrement des paramètres");

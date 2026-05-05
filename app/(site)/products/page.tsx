@@ -2,7 +2,7 @@ import Link from "next/link";
 import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { ProductCard } from "@/components/ProductCard";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type SearchParams = { q?: string; category?: string; wall?: string; min?: string; max?: string };
 

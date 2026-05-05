@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
-import { apiClient, packProductDescription } from "@/lib/api-client";
+import { apiClient, CACHE_TAGS, packProductDescription } from "@/lib/api-client";
 import { productSchema } from "@/lib/validators";
 
 export async function GET() {
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       image_url: d.imageUrl ?? null,
       is_active: d.isActive ?? true,
     });
+    revalidateTag(CACHE_TAGS.products);
     return NextResponse.json({ product }, { status: 201 });
   } catch (err) {
     return apiErrorResponse(err, "Échec de la création du produit");

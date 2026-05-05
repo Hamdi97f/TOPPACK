@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiErrorResponse, requireAdmin } from "@/lib/api-auth";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, CACHE_TAGS } from "@/lib/api-client";
 import { normaliseIntegrationsSettings } from "@/lib/site-settings";
 
 export async function GET() {
@@ -23,6 +24,7 @@ export async function PUT(req: Request) {
   try {
     const current = await apiClient.getSiteSettings(session.user.apiToken);
     const saved = await apiClient.setSiteSettings(session.user.apiToken, { ...current, integrations });
+    revalidateTag(CACHE_TAGS.siteSettings);
     return NextResponse.json({ integrations: saved.integrations });
   } catch (err) {
     return apiErrorResponse(err, "Échec de l'enregistrement");

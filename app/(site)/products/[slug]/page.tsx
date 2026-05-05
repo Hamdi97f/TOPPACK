@@ -3,7 +3,7 @@ import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/AddToCartButton";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
