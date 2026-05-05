@@ -513,9 +513,9 @@ export const apiClient = {
    * Fetch a file's bytes from the api-gateway by id, returning the raw
    * `Response` so callers can stream it (e.g. proxy through a Next.js route).
    *
-   * The remote schema does not document the download path explicitly; we try
-   * the common candidates in order. The first 2xx response wins. Returns
-   * `null` if the file is not found.
+   * The api-gateway exposes downloads as `GET /download-file?file_id=<id>`
+   * (a query parameter — *not* a path segment). Returns `null` if the file
+   * is not found.
    */
   async fetchFile(token: string | null | undefined, id: string): Promise<Response | null> {
     let bearer = token;
@@ -524,29 +524,22 @@ export const apiClient = {
       "x-api-key": apiKey(),
       Authorization: `Bearer ${bearer}`,
     };
-    const candidates = [
-      `/download-file/${encodeURIComponent(id)}`,
-      `/files/${encodeURIComponent(id)}`,
-      `/file/${encodeURIComponent(id)}`,
-    ];
-    let lastStatus = 404;
-    for (const path of candidates) {
-      const res = await fetch(baseUrl() + path, { headers, cache: "no-store" });
-      if (res.ok) return res;
-      lastStatus = res.status;
-      // Don't burn through candidates on auth errors — refresh & retry once.
-      if (res.status === 401 && !token) {
-        const fresh = await getServiceToken(true);
-        const retry = await fetch(baseUrl() + path, {
-          headers: { ...headers, Authorization: `Bearer ${fresh}` },
-          cache: "no-store",
-        });
-        if (retry.ok) return retry;
-        lastStatus = retry.status;
-      }
+    const path = `/download-file?file_id=${encodeURIComponent(id)}`;
+    const res = await fetch(baseUrl() + path, { headers, cache: "no-store" });
+    if (res.ok) return res;
+    // Auth failures are recoverable when we minted the token ourselves.
+    if (res.status === 401 && !token) {
+      const fresh = await getServiceToken(true);
+      const retry = await fetch(baseUrl() + path, {
+        headers: { ...headers, Authorization: `Bearer ${fresh}` },
+        cache: "no-store",
+      });
+      if (retry.ok) return retry;
+      if (retry.status === 404) return null;
+      throw new ApiError(retry.status, `Failed to download file ${id}`);
     }
-    if (lastStatus === 404) return null;
-    throw new ApiError(lastStatus, `Failed to download file ${id}`);
+    if (res.status === 404) return null;
+    throw new ApiError(res.status, `Failed to download file ${id}`);
   },
 };
 
