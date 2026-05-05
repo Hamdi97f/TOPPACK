@@ -25,7 +25,9 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get("file");
   const kindRaw = form.get("kind");
-  const kind = kindRaw === "favicon" ? "favicon" : kindRaw === "social" ? "social" : null;
+  let kind: "favicon" | "social" | null = null;
+  if (kindRaw === "favicon") kind = "favicon";
+  else if (kindRaw === "social") kind = "social";
 
   if (!kind) {
     return NextResponse.json({ error: "Champ 'kind' invalide (attendu: social|favicon)" }, { status: 400 });
