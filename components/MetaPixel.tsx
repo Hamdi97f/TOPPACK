@@ -1,4 +1,5 @@
 import Script from "next/script";
+import { META_PIXEL_ID_RE } from "@/lib/site-settings";
 
 /**
  * Renders the Meta (Facebook) Pixel snippet and the no-JS fallback image
@@ -9,7 +10,7 @@ import Script from "next/script";
  * into the script body and image URL without further escaping.
  */
 export function MetaPixel({ pixelId }: { pixelId: string }) {
-  if (!pixelId || !/^[0-9]{1,32}$/.test(pixelId)) return null;
+  if (!pixelId || !META_PIXEL_ID_RE.test(pixelId)) return null;
   const init = `!function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};

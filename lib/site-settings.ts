@@ -165,6 +165,11 @@ export interface IntegrationsSettings {
   metaCapiTestEventCode: string;
 }
 
+// Meta Pixel IDs are numeric and short. The same regex is used to validate
+// the admin-supplied value before persistence and before inlining the id into
+// the browser-side script (see `MetaPixel`).
+export const META_PIXEL_ID_RE = /^[0-9]{1,32}$/;
+
 export function defaultIntegrationsSettings(): IntegrationsSettings {
   return { metaPixelId: "", metaCapiToken: "", metaCapiTestEventCode: "" };
 }
@@ -174,7 +179,7 @@ export function normaliseIntegrationsSettings(input: unknown): IntegrationsSetti
   const r = input as Record<string, unknown>;
   // The Pixel ID must be safe to inline into a <script>: numeric digits only.
   const rawPixel = trimString(r.metaPixelId, 32);
-  const metaPixelId = /^[0-9]{1,32}$/.test(rawPixel) ? rawPixel : "";
+  const metaPixelId = META_PIXEL_ID_RE.test(rawPixel) ? rawPixel : "";
   return {
     metaPixelId,
     metaCapiToken: trimString(r.metaCapiToken, 500),

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { readJsonOrSignOut } from "@/lib/client-fetch";
-import type { IntegrationsSettings } from "@/lib/site-settings";
+import { META_PIXEL_ID_RE, type IntegrationsSettings } from "@/lib/site-settings";
 
 export function IntegrationsForm({ initial }: { initial: IntegrationsSettings }) {
   const router = useRouter();
@@ -21,7 +21,7 @@ export function IntegrationsForm({ initial }: { initial: IntegrationsSettings })
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    if (data.metaPixelId && !/^[0-9]{1,32}$/.test(data.metaPixelId.trim())) {
+    if (data.metaPixelId && !META_PIXEL_ID_RE.test(data.metaPixelId.trim())) {
       setError("L'identifiant du Pixel doit contenir uniquement des chiffres.");
       return;
     }
