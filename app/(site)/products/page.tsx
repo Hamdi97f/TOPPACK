@@ -94,8 +94,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <div className="card p-8 text-center text-kraft-600">Aucun produit ne correspond à vos filtres.</div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {products.map((p) => (
-              <ProductCard key={p.id} p={p} />
+            {products.map((p, i) => (
+              <ProductCard key={p.id} p={p} priority={i < 4} />
             ))}
           </div>
         )}
