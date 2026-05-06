@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { ExpandableDescription } from "@/components/ExpandableDescription";
 
 export const revalidate = 60;
 
@@ -47,7 +48,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         ) : (
           <div className="text-2xl font-bold text-kraft-800 mt-3">{formatPrice(product.price)}</div>
         )}
-        <p className="mt-4 text-kraft-800 whitespace-pre-line">{product.description}</p>
+        <ExpandableDescription text={product.description ?? ""} />
 
         <table className="mt-6 w-full text-sm card overflow-hidden">
           <tbody>
