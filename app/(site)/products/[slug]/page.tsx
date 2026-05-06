@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
@@ -20,10 +21,16 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="container-x py-8 grid md:grid-cols-2 gap-8">
-      <div className="card aspect-square bg-kraft-100 flex items-center justify-center text-9xl">
+      <div className="card aspect-square bg-kraft-100 flex items-center justify-center text-9xl relative overflow-hidden">
         {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            priority
+            className="object-cover rounded-lg"
+          />
         ) : (
           <span aria-hidden>📦</span>
         )}

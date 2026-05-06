@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 
@@ -15,14 +16,25 @@ export type ProductCardData = {
   heightCm: number;
 };
 
-export function ProductCard({ p }: { p: ProductCardData }) {
+// Card grid layout: 2 cols on mobile, 3 on lg, 4 on xl. Tell Next.js so it can
+// pick the right responsive variant instead of always shipping the largest one.
+const CARD_IMAGE_SIZES = "(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 50vw";
+
+export function ProductCard({ p, priority = false }: { p: ProductCardData; priority?: boolean }) {
   const hasPromo = p.promoPrice != null && p.regularPrice != null;
   return (
     <Link href={`/products/${p.slug}`} className="card overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
       <div className="aspect-square bg-kraft-100 flex items-center justify-center text-6xl relative">
         {p.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+          <Image
+            src={p.imageUrl}
+            alt={p.name}
+            fill
+            sizes={CARD_IMAGE_SIZES}
+            className="object-cover"
+            priority={priority}
+            // Non-priority cards default to lazy in next/image, which is what we want.
+          />
         ) : (
           <span aria-hidden>📦</span>
         )}
