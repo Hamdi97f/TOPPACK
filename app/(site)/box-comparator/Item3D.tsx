@@ -67,14 +67,20 @@ function computeRotation(
   preset: ItemPreset,
   o: { l: number; w: number; h: number },
 ): string {
-  // Find which axis of `o` corresponds to the preset's natural height.
-  // We use the preset's own dims as the canonical reference: if o.l === preset.h
-  // then the item is laid flat along screen-X, etc. Because identical-side
-  // items can be ambiguous we just check h first.
+  // The shape renderers draw the item with its natural-h axis along the
+  // local CSS Y axis (vertical). When the packer chooses an orientation
+  // where preset.h is mapped to a different world axis we rotate the whole
+  // item to bring its natural axis back in line with that world axis.
+  //   - rotateZ(90deg) swaps CSS X ↔ Y → puts the natural-h axis along
+  //     the world's L (length / CSS X) direction.
+  //   - rotateX(90deg) swaps CSS Y ↔ Z → puts the natural-h axis along
+  //     the world's W (depth / CSS Z) direction.
+  // (rotateY would spin the item around its own vertical axis and would
+  // therefore have no effect on a cylinder/sphere — it is not what we want.)
   const eq = (a: number, b: number) => Math.abs(a - b) < 0.01;
   if (eq(o.h, preset.h)) return "translate3d(0,0,0)";              // upright
   if (eq(o.l, preset.h)) return "rotateZ(90deg)";                   // lying along X
-  if (eq(o.w, preset.h)) return "rotateX(90deg)";                   // lying along Y (depth)
+  if (eq(o.w, preset.h)) return "rotateX(90deg)";                   // lying along Z (depth)
   return "translate3d(0,0,0)";
 }
 
@@ -424,11 +430,10 @@ function Sphere({ l, w, h, body, seam }: { l: number; w: number; h: number; body
 // ---------------------------------------------------------------------------
 
 function Smartphone({ l, w, h, body, screen }: { l: number; w: number; h: number; body: string; screen: string }) {
-  // Front face = screen with a small bezel.
+  // The phone is thin along `h`. Its "screen" therefore lives on the large
+  // face perpendicular to `h` (i.e. the top face of the bounding box).
   const bezel = Math.min(l, w) * 0.04;
-  const screenSvg = `linear-gradient(135deg, ${screen} 0%, #0ea5e9 100%)`;
-  const front =
-    `${body} padding-box, ${screenSvg} border-box`;
+  const screenGradient = `linear-gradient(135deg, ${screen} 0%, #0ea5e9 100%)`;
   return (
     <div style={{ position: "absolute", transformStyle: "preserve-3d" }}>
       <Cuboid
@@ -437,16 +442,8 @@ function Smartphone({ l, w, h, body, screen }: { l: number; w: number; h: number
         hpx={h}
         color={body}
         radius={Math.min(l, w) * 0.08}
-        faces={{
-          front,
-          back: body,
-          top: body,
-          bottom: body,
-          left: body,
-          right: body,
-        }}
       />
-      {/* Screen overlay on the front face */}
+      {/* Screen overlay on the top face (l × w, perpendicular to thickness h) */}
       <div
         style={{
           position: "absolute",
@@ -454,7 +451,7 @@ function Smartphone({ l, w, h, body, screen }: { l: number; w: number; h: number
           height: w - bezel * 2,
           left: -(l - bezel * 2) / 2,
           top: -(w - bezel * 2) / 2,
-          background: screenSvg,
+          background: screenGradient,
           borderRadius: Math.min(l, w) * 0.06,
           boxShadow: "inset 0 0 12px rgba(255,255,255,0.2)",
           transform: `rotateX(-90deg) translateZ(${h / 2 + 0.4}px)`,
