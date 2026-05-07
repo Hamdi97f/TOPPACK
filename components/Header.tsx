@@ -6,10 +6,16 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { useCart } from "./CartProvider";
 
-export function Header() {
+export function Header({
+  showBoxComparator = true,
+}: {
+  /** When false, the "Comparateur 3D" link is hidden for non-admins. */
+  showBoxComparator?: boolean;
+}) {
   const { data: session } = useSession();
   const { count } = useCart();
   const isAdmin = session?.user?.role === "ADMIN";
+  const showComparator = showBoxComparator || isAdmin;
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -40,6 +46,14 @@ export function Header() {
           <Link href="/products" className="hover:text-kraft-700">Boutique</Link>
           <Link href="/categories" className="hover:text-kraft-700">Catégories</Link>
           <Link href="/devis" className="hover:text-kraft-700">Devis</Link>
+          {showComparator && (
+            <Link href="/box-comparator" className="hover:text-kraft-700">
+              Comparateur 3D
+              {!showBoxComparator && (
+                <span className="ml-1 text-[10px] text-amber-700 align-top">(masqué)</span>
+              )}
+            </Link>
+          )}
           <Link href="/about" className="hover:text-kraft-700">À propos</Link>
           <Link href="/contact" className="hover:text-kraft-700">Contact</Link>
         </nav>
@@ -118,6 +132,16 @@ export function Header() {
               <li><Link href="/products" className="block px-4 py-3 hover:bg-kraft-50">Boutique</Link></li>
               <li><Link href="/categories" className="block px-4 py-3 hover:bg-kraft-50">Catégories</Link></li>
               <li><Link href="/devis" className="block px-4 py-3 hover:bg-kraft-50">Devis</Link></li>
+              {showComparator && (
+                <li>
+                  <Link href="/box-comparator" className="block px-4 py-3 hover:bg-kraft-50">
+                    Comparateur 3D
+                    {!showBoxComparator && (
+                      <span className="ml-1 text-[10px] text-amber-700">(masqué)</span>
+                    )}
+                  </Link>
+                </li>
+              )}
               <li><Link href="/about" className="block px-4 py-3 hover:bg-kraft-50">À propos</Link></li>
               <li><Link href="/contact" className="block px-4 py-3 hover:bg-kraft-50">Contact</Link></li>
               <li><Link href="/cart" className="block px-4 py-3 hover:bg-kraft-50">Panier ({count})</Link></li>

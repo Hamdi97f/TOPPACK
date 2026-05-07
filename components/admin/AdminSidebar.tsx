@@ -16,6 +16,7 @@ const links = [
   { href: "/admin/settings/shipping", label: "Frais de livraison" },
   { href: "/admin/settings/contact", label: "Contact" },
   { href: "/admin/settings/branding", label: "Identité du site" },
+  { href: "/admin/settings/box-comparator", label: "Comparateur 3D" },
   { href: "/admin/settings/integrations", label: "Intégrations" },
   { href: "/admin/settings/account", label: "Comptes clients" },
 ];

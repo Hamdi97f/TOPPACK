@@ -9,7 +9,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   return (
     <>
       <MetaPixel pixelId={settings.integrations.metaPixelId} />
-      <Header />
+      <Header showBoxComparator={settings.boxComparator.enabled} />
       <main className="flex-1">{children}</main>
       <Footer contact={settings.contact} />
       {/* Self-gating: only activates when the page is loaded inside an iframe
