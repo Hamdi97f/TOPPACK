@@ -9,9 +9,10 @@ export const revalidate = 60;
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [allProducts, allCategories] = await Promise.all([
+  const [allProducts, allCategories, siteSettings] = await Promise.all([
     apiClient.listProducts(),
     apiClient.listCategories(),
+    apiClient.getSiteSettings(),
   ]);
   const products = allProducts.map(adaptProduct);
   const product = products.find((p) => p.slug === slug);
@@ -71,6 +72,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               imageUrl: product.imageUrl,
             }}
             disabled={product.stock <= 0}
+            checkoutSettings={siteSettings.checkout}
+            shipping={siteSettings.shipping}
+            requireAccount={siteSettings.account.requireAccountForOrder}
           />
         </div>
       </div>
