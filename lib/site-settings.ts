@@ -544,6 +544,35 @@ export function normaliseLiveEditsSettings(input: unknown): LiveEditsSettings {
 }
 
 // ---------------------------------------------------------------------------
+// Box comparator section (public 3D cardboard-box vs. standard-items page)
+// ---------------------------------------------------------------------------
+
+/**
+ * Toggles the public `/box-comparator` page. When `enabled` is false the page
+ * returns 404 for anonymous visitors and the link is hidden from the storefront
+ * navigation. Admins can still preview the page (with a banner) so they can
+ * verify the content before re-publishing it.
+ */
+export interface BoxComparatorSettings {
+  enabled: boolean;
+}
+
+export function defaultBoxComparatorSettings(): BoxComparatorSettings {
+  return { enabled: true };
+}
+
+export function normaliseBoxComparatorSettings(input: unknown): BoxComparatorSettings {
+  if (!input || typeof input !== "object") return defaultBoxComparatorSettings();
+  const r = input as Record<string, unknown>;
+  // Default to true (published) unless the value is an explicit `false`. This
+  // matches the rest of the SiteSettings sections, which fall back to the
+  // built-in defaults when a key is missing — and the built-in default for
+  // this feature is "published". When admins want it hidden they save an
+  // explicit `false` from the settings form.
+  return { enabled: r.enabled !== false };
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -556,6 +585,7 @@ export interface SiteSettings {
   shipping: ShippingSettings;
   devis: DevisFormSettings;
   liveEdits: LiveEditsSettings;
+  boxComparator: BoxComparatorSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -568,6 +598,7 @@ export function defaultSiteSettings(): SiteSettings {
     shipping: defaultShippingSettings(),
     devis: defaultDevisFormSettings(),
     liveEdits: defaultLiveEditsSettings(),
+    boxComparator: defaultBoxComparatorSettings(),
   };
 }
 
@@ -583,6 +614,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     shipping: normaliseShippingSettings(r.shipping),
     devis: normaliseDevisFormSettings(r.devis),
     liveEdits: normaliseLiveEditsSettings(r.liveEdits),
+    boxComparator: normaliseBoxComparatorSettings(r.boxComparator),
   };
 }
 
