@@ -20,6 +20,24 @@ export interface ItemPreset {
   h: number;
   /** Tailwind/CSS colour for the rendered block face. */
   color: string;
+  /**
+   * Visual style used by the 3D viewer. Determines whether the item is
+   * rendered as a box, a cylinder (bottle/can/mug), a sphere, or a more
+   * detailed device (smartphone/laptop/book/ream).
+   */
+  shape:
+    | "bottle"
+    | "can"
+    | "mug"
+    | "sphere"
+    | "smartphone"
+    | "laptop"
+    | "book"
+    | "ream"
+    | "shoebox"
+    | "sheet";
+  /** Optional secondary colour used by some shapes (cap, screen, spine, …). */
+  accent?: string;
 }
 
 export interface BoxPreset {
@@ -37,14 +55,18 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     label: "Bouteille d'eau 1,5 L",
     hint: "≈ Ø88 × 320 mm",
     l: 88, w: 88, h: 320,
-    color: "#3b82f6",
+    color: "#60a5fa",
+    accent: "#1d4ed8",
+    shape: "bottle",
   },
   {
     id: "bottle-50cl",
     label: "Bouteille d'eau 50 cl",
     hint: "≈ Ø65 × 215 mm",
     l: 65, w: 65, h: 215,
-    color: "#60a5fa",
+    color: "#93c5fd",
+    accent: "#1d4ed8",
+    shape: "bottle",
   },
   {
     id: "can-33cl",
@@ -52,13 +74,17 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "≈ Ø66 × 115 mm",
     l: 66, w: 66, h: 115,
     color: "#ef4444",
+    accent: "#9ca3af",
+    shape: "can",
   },
   {
     id: "ream-a4",
     label: "Rame de papier A4 (500 feuilles)",
     hint: "297 × 210 × 50 mm",
     l: 297, w: 210, h: 50,
-    color: "#f59e0b",
+    color: "#fef3c7",
+    accent: "#f59e0b",
+    shape: "ream",
   },
   {
     id: "sheet-a4",
@@ -66,6 +92,7 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "297 × 210 × 1 mm",
     l: 297, w: 210, h: 1,
     color: "#fde68a",
+    shape: "sheet",
   },
   {
     id: "book-pocket",
@@ -73,6 +100,8 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "180 × 110 × 20 mm",
     l: 180, w: 110, h: 20,
     color: "#10b981",
+    accent: "#065f46",
+    shape: "book",
   },
   {
     id: "shoebox",
@@ -80,6 +109,7 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "330 × 200 × 130 mm",
     l: 330, w: 200, h: 130,
     color: "#a855f7",
+    shape: "shoebox",
   },
   {
     id: "smartphone",
@@ -87,6 +117,8 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "160 × 75 × 8 mm",
     l: 160, w: 75, h: 8,
     color: "#111827",
+    accent: "#1e3a8a",
+    shape: "smartphone",
   },
   {
     id: "laptop-15",
@@ -94,13 +126,17 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "360 × 245 × 20 mm",
     l: 360, w: 245, h: 20,
     color: "#374151",
+    accent: "#0f172a",
+    shape: "laptop",
   },
   {
     id: "mug",
     label: "Mug",
     hint: "≈ Ø95 × 100 mm",
     l: 95, w: 95, h: 100,
-    color: "#f472b6",
+    color: "#f9fafb",
+    accent: "#f472b6",
+    shape: "mug",
   },
   {
     id: "cube-tennis",
@@ -108,6 +144,8 @@ export const ITEM_PRESETS: readonly ItemPreset[] = [
     hint: "≈ Ø67 mm",
     l: 67, w: 67, h: 67,
     color: "#bef264",
+    accent: "#ffffff",
+    shape: "sphere",
   },
 ];
 
