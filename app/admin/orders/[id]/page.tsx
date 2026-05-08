@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import {
@@ -45,6 +46,12 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         </div>
         <div className="flex gap-2 print:hidden items-center">
           <OrderStatusForm id={order.id} status={order.status} />
+          <Link
+            href={`/admin/orders/${order.id}/edit`}
+            className="btn-primary !py-1 !px-3 text-xs"
+          >
+            Modifier
+          </Link>
           <PrintButton />
           <OrderDeleteButton
             id={order.id}

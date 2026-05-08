@@ -238,6 +238,61 @@ export const CACHE_TAGS = {
 /** Time-based revalidation window (seconds) for anonymous catalog reads. */
 const PUBLIC_REVALIDATE_SECONDS = 60;
 
+// ---------------------------------------------------------------------------
+// In-process TTL cache for authenticated catalog reads
+// ---------------------------------------------------------------------------
+//
+// The Next.js fetch cache (`next: { revalidate, tags }`) only kicks in for
+// anonymous reads (`publicReadCache` returns undefined when a token is set),
+// so admin pages — which always pass an `apiToken` — used to round-trip to
+// the upstream gateway on every navigation. The admin panel renders multiple
+// such pages back-to-back (dashboard → orders → order detail → product list),
+// so each navigation paid the cost of re-downloading the full product and
+// category tables.
+//
+// Products, categories, and the site-settings record (which is itself a
+// hidden category) change infrequently relative to admin navigation. We cache
+// them for a short window in module-level state — shared across all callers
+// because the underlying data is identical regardless of which authenticated
+// token fetched it. Mutating helpers below (`createProduct`, `updateCategory`,
+// `setSiteSettings`, …) clear the relevant cache so subsequent reads see the
+// fresh data immediately.
+//
+// In-flight de-duplication: when several concurrent requests miss the cache
+// at the same time we only issue a single upstream call and share its
+// promise, so a burst of admin tabs opening simultaneously does not amplify
+// load.
+
+const CATALOG_CACHE_TTL_MS = 30_000;
+
+interface CatalogCacheEntry<T> {
+  promise: Promise<T>;
+  expiresAt: number;
+}
+
+let productsCache: CatalogCacheEntry<ApiProduct[]> | null = null;
+let categoriesCache: CatalogCacheEntry<ApiCategory[]> | null = null;
+
+function readCachedCatalog<T>(entry: CatalogCacheEntry<T> | null): Promise<T> | null {
+  if (!entry) return null;
+  if (Date.now() >= entry.expiresAt) return null;
+  return entry.promise;
+}
+
+/** Drop the cached product list; call after any product create/update/delete. */
+export function invalidateProductsCache(): void {
+  productsCache = null;
+}
+
+/**
+ * Drop the cached categories list. Call after any category mutation, after
+ * writing site settings (the settings record is itself a hidden category),
+ * and after writing devis (also persisted as hidden categories).
+ */
+export function invalidateCategoriesCache(): void {
+  categoriesCache = null;
+}
+
 /**
  * Build a `next` fetch option for an anonymous public read. Returns
  * `undefined` when an authenticated token is supplied so admin/account reads
@@ -510,43 +565,74 @@ export const apiClient = {
 
   // Categories
   async listCategories(token?: string | null): Promise<ApiCategory[]> {
-    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", {
-      token,
-      next: publicReadCache(token, [CACHE_TAGS.categories]),
-    });
+    const cats = await this._listAllCategories(token);
     // Hide internal records used as side-channel storage (e.g. site settings,
     // quote requests) so they never appear in storefront or admin category
     // lists. Any name starting with "__" is treated as internal — this covers
     // the existing `__settings__` record and the `__devis__:*` records.
-    return (r.categories || []).filter((c) => !c.name.startsWith("__"));
+    return cats.filter((c) => !c.name.startsWith("__"));
   },
   /** Internal: includes the hidden `__settings__` record. */
   async _listAllCategories(token?: string | null): Promise<ApiCategory[]> {
-    const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", {
-      token,
-      // Settings change rarely — share the categories cache and rely on
-      // explicit `revalidateTag` invalidation from admin write paths.
-      next: publicReadCache(token, [CACHE_TAGS.categories, CACHE_TAGS.siteSettings]),
+    const cached = readCachedCatalog(categoriesCache);
+    if (cached) return cached;
+    const promise = (async () => {
+      const r = await authedRequest<{ categories: ApiCategory[] }>("/categories", {
+        token,
+        // Settings change rarely — share the categories cache and rely on
+        // explicit `revalidateTag` invalidation from admin write paths.
+        next: publicReadCache(token, [CACHE_TAGS.categories, CACHE_TAGS.siteSettings]),
+      });
+      return r.categories || [];
+    })();
+    const entry: CatalogCacheEntry<ApiCategory[]> = {
+      promise,
+      expiresAt: Date.now() + CATALOG_CACHE_TTL_MS,
+    };
+    categoriesCache = entry;
+    // Drop the entry on failure so the next caller retries instead of
+    // serving the rejected promise from cache for the full TTL window.
+    promise.catch(() => {
+      if (categoriesCache === entry) categoriesCache = null;
     });
-    return r.categories || [];
+    return promise;
   },
   async createCategory(token: string, body: { name: string; description?: string | null }): Promise<ApiCategory> {
-    return authedRequest("/categories", { method: "POST", token, body });
+    const result = await authedRequest<ApiCategory>("/categories", { method: "POST", token, body });
+    invalidateCategoriesCache();
+    return result;
   },
   async updateCategory(token: string, id: string, body: { name?: string; description?: string | null }): Promise<ApiCategory> {
-    return authedRequest(`/categories/${encodeURIComponent(id)}`, { method: "PUT", token, body });
+    const result = await authedRequest<ApiCategory>(`/categories/${encodeURIComponent(id)}`, { method: "PUT", token, body });
+    invalidateCategoriesCache();
+    return result;
   },
   async deleteCategory(token: string, id: string): Promise<{ success: boolean }> {
-    return authedRequest(`/categories/${encodeURIComponent(id)}`, { method: "DELETE", token });
+    const result = await authedRequest<{ success: boolean }>(`/categories/${encodeURIComponent(id)}`, { method: "DELETE", token });
+    invalidateCategoriesCache();
+    return result;
   },
 
   // Products
   async listProducts(token?: string | null): Promise<ApiProduct[]> {
-    const r = await authedRequest<{ products: ApiProduct[] }>("/products", {
-      token,
-      next: publicReadCache(token, [CACHE_TAGS.products]),
+    const cached = readCachedCatalog(productsCache);
+    if (cached) return cached;
+    const promise = (async () => {
+      const r = await authedRequest<{ products: ApiProduct[] }>("/products", {
+        token,
+        next: publicReadCache(token, [CACHE_TAGS.products]),
+      });
+      return r.products || [];
+    })();
+    const entry: CatalogCacheEntry<ApiProduct[]> = {
+      promise,
+      expiresAt: Date.now() + CATALOG_CACHE_TTL_MS,
+    };
+    productsCache = entry;
+    promise.catch(() => {
+      if (productsCache === entry) productsCache = null;
     });
-    return r.products || [];
+    return promise;
   },
   async getProduct(token: string | null | undefined, id: string): Promise<ApiProduct> {
     return authedRequest(`/products/${encodeURIComponent(id)}`, {
@@ -555,13 +641,19 @@ export const apiClient = {
     });
   },
   async createProduct(token: string, body: Partial<ApiProduct>): Promise<ApiProduct> {
-    return authedRequest("/products", { method: "POST", token, body });
+    const result = await authedRequest<ApiProduct>("/products", { method: "POST", token, body });
+    invalidateProductsCache();
+    return result;
   },
   async updateProduct(token: string, id: string, body: Partial<ApiProduct>): Promise<ApiProduct> {
-    return authedRequest(`/products/${encodeURIComponent(id)}`, { method: "PUT", token, body });
+    const result = await authedRequest<ApiProduct>(`/products/${encodeURIComponent(id)}`, { method: "PUT", token, body });
+    invalidateProductsCache();
+    return result;
   },
   async deleteProduct(token: string, id: string): Promise<{ success: boolean }> {
-    return authedRequest(`/products/${encodeURIComponent(id)}`, { method: "DELETE", token });
+    const result = await authedRequest<{ success: boolean }>(`/products/${encodeURIComponent(id)}`, { method: "DELETE", token });
+    invalidateProductsCache();
+    return result;
   },
 
   // Orders
@@ -587,7 +679,14 @@ export const apiClient = {
   async updateOrder(
     token: string,
     id: string,
-    body: { status?: string; notes?: string; items?: Array<{ product_id: string; quantity: number; unit_price?: number }> }
+    body: {
+      status?: string;
+      notes?: string;
+      customer_name?: string;
+      customer_email?: string;
+      shipping_address?: string;
+      items?: Array<{ product_id: string; quantity: number; unit_price?: number }>;
+    }
   ): Promise<ApiOrder> {
     return authedRequest(`/orders/${encodeURIComponent(id)}`, { method: "PUT", token, body });
   },

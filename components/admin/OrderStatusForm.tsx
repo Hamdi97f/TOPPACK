@@ -19,6 +19,10 @@ export function OrderStatusForm({ id, status }: { id: string; status: string }) 
         body: JSON.stringify({ status: next }),
       });
       await readJsonOrSignOut(res);
+      // Re-render the server component lazily so the "Statut :" summary line
+      // (and any other places that show the status) reflect the new value.
+      // The catalog cache in api-client makes this re-render cheap because
+      // listProducts no longer round-trips on every refresh.
       router.refresh();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Échec de la mise à jour");
