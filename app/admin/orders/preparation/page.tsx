@@ -101,130 +101,97 @@ export default async function AdminOrdersPreparationPage({
           Aucune commande à préparer.
         </div>
       ) : (
-        <ol className="space-y-4 print:space-y-0">
-          {orders.map((o, idx) => {
-            const ship = parseShippingAddress(o.shipping_address);
-            const { paymentMethod, text: noteText } = parseOrderNotes(o.notes);
-            const itemQty = o.order_items.reduce((s, i) => s + i.quantity, 0);
-            return (
-              <li
-                key={o.id}
-                className={
-                  "card p-4 print:border print:border-kraft-300 print:p-3 print:rounded-none print:shadow-none print:break-inside-avoid" +
-                  (idx > 0 ? " print:break-before-page" : "")
-                }
-              >
-                <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-kraft-600">
-                      Commande #{idx + 1}
-                    </div>
-                    <div className="font-mono text-sm break-all">{o.id}</div>
-                    {o.created_at && (
+        <div className="card p-0 overflow-x-auto print:border print:border-kraft-300 print:rounded-none print:shadow-none print:overflow-visible">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-kraft-100 text-kraft-800 print:bg-transparent print:border-b print:border-kraft-400">
+              <tr>
+                <th className="text-left p-2 print:p-1 w-10">#</th>
+                <th className="text-left p-2 print:p-1">Commande</th>
+                <th className="text-left p-2 print:p-1">Client</th>
+                <th className="text-left p-2 print:p-1">Livraison</th>
+                <th className="text-left p-2 print:p-1">Articles à préparer</th>
+                <th className="text-left p-2 print:p-1 w-28">Paiement / Notes</th>
+                <th className="p-2 print:p-1 w-12 text-center">✓</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o, idx) => {
+                const ship = parseShippingAddress(o.shipping_address);
+                const { paymentMethod, text: noteText } = parseOrderNotes(o.notes);
+                const itemQty = o.order_items.reduce((s, i) => s + i.quantity, 0);
+                return (
+                  <tr
+                    key={o.id}
+                    className="border-t border-kraft-200 align-top print:break-inside-avoid"
+                  >
+                    <td className="p-2 print:p-1 font-semibold">{idx + 1}</td>
+                    <td className="p-2 print:p-1">
+                      <div className="font-mono text-xs break-all">{o.id}</div>
+                      {o.created_at && (
+                        <div className="text-xs text-kraft-600">
+                          {new Date(o.created_at).toLocaleString("fr-FR")}
+                        </div>
+                      )}
+                      <div className="text-xs mt-1">
+                        <span className="text-kraft-600">Statut :</span>{" "}
+                        <span className="font-semibold">{statusLabel(o.status)}</span>
+                      </div>
                       <div className="text-xs text-kraft-600">
-                        {new Date(o.created_at).toLocaleString("fr-FR")}
+                        {itemQty} article{itemQty > 1 ? "s" : ""}
                       </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs uppercase tracking-wide text-kraft-600">
-                      Statut
-                    </div>
-                    <div className="font-semibold">{statusLabel(o.status)}</div>
-                    <div className="text-xs text-kraft-600">
-                      {itemQty} article{itemQty > 1 ? "s" : ""}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid md:grid-cols-2 gap-3 print:grid-cols-2 print:gap-2">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-kraft-600">
-                      Client
-                    </div>
-                    <div className="font-semibold">{o.customer_name ?? "—"}</div>
-                    {ship.customerPhone && (
-                      <div className="text-sm">Tél : {ship.customerPhone}</div>
-                    )}
-                    {o.customer_email && (
-                      <div className="text-sm">{o.customer_email}</div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-kraft-600">
-                      Livraison
-                    </div>
-                    <div className="text-sm">{ship.addressLine || "—"}</div>
-                    {(ship.city || ship.postalCode) && (
-                      <div className="text-sm">
-                        {ship.city} {ship.postalCode}
-                      </div>
-                    )}
-                    {ship.country && <div className="text-sm">{ship.country}</div>}
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <div className="text-xs uppercase tracking-wide text-kraft-600 mb-1">
-                    Articles à préparer
-                  </div>
-                  <table className="w-full text-sm border-collapse">
-                    <thead className="bg-kraft-100 text-kraft-800 print:bg-transparent print:border-b print:border-kraft-400">
-                      <tr>
-                        <th className="text-left p-2 print:p-1 w-20">Qté</th>
-                        <th className="text-left p-2 print:p-1">Produit</th>
-                        <th className="text-left p-2 print:p-1 hidden md:table-cell print:table-cell">
-                          Référence
-                        </th>
-                        <th className="p-2 print:p-1 w-16 text-center">✓</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {o.order_items.map((i, j) => {
-                        const p = productById.get(i.product_id);
-                        return (
-                          <tr
-                            key={i.id ?? `${o.id}-${j}`}
-                            className="border-t border-kraft-100 print:border-kraft-300"
-                          >
-                            <td className="p-2 print:p-1 font-bold text-base">
-                              {i.quantity}
-                            </td>
-                            <td className="p-2 print:p-1">
-                              {p?.name ?? i.product_id}
-                            </td>
-                            <td className="p-2 print:p-1 font-mono text-xs hidden md:table-cell print:table-cell break-all">
-                              {p?.id ?? i.product_id}
-                            </td>
-                            <td className="p-2 print:p-1 text-center">
-                              <span className="inline-block w-5 h-5 border border-kraft-400" />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {(noteText || paymentMethod) && (
-                  <div className="mt-3 text-sm">
-                    {paymentMethod && (
-                      <div>
-                        <span className="text-kraft-600">Paiement :</span>{" "}
-                        {paymentMethodLabel(paymentMethod)}
-                      </div>
-                    )}
-                    {noteText && (
-                      <div>
-                        <span className="text-kraft-600">Notes :</span> {noteText}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+                    </td>
+                    <td className="p-2 print:p-1">
+                      <div className="font-semibold">{o.customer_name ?? "—"}</div>
+                      {ship.customerPhone && (
+                        <div className="text-xs">Tél : {ship.customerPhone}</div>
+                      )}
+                      {o.customer_email && (
+                        <div className="text-xs break-all">{o.customer_email}</div>
+                      )}
+                    </td>
+                    <td className="p-2 print:p-1 text-xs">
+                      <div>{ship.addressLine || "—"}</div>
+                      {(ship.city || ship.postalCode) && (
+                        <div>
+                          {ship.city} {ship.postalCode}
+                        </div>
+                      )}
+                      {ship.country && <div>{ship.country}</div>}
+                    </td>
+                    <td className="p-2 print:p-1">
+                      <ul className="space-y-1">
+                        {o.order_items.map((i, j) => {
+                          const p = productById.get(i.product_id);
+                          return (
+                            <li
+                              key={i.id ?? `${o.id}-${j}`}
+                              className="flex items-baseline gap-2"
+                            >
+                              <span className="font-bold">{i.quantity}×</span>
+                              <span>{p?.name ?? i.product_id}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </td>
+                    <td className="p-2 print:p-1 text-xs">
+                      {paymentMethod && (
+                        <div>{paymentMethodLabel(paymentMethod)}</div>
+                      )}
+                      {noteText && (
+                        <div className="text-kraft-600">{noteText}</div>
+                      )}
+                      {!paymentMethod && !noteText && <span>—</span>}
+                    </td>
+                    <td className="p-2 print:p-1 text-center">
+                      <span className="inline-block w-5 h-5 border border-kraft-400" />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
