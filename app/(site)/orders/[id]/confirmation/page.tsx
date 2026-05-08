@@ -9,6 +9,7 @@ import {
   parseOrderNotes,
 } from "@/lib/api-client";
 import { formatPrice, paymentMethodLabel, statusLabel } from "@/lib/utils";
+import { OrderConfirmActions } from "@/components/OrderConfirmActions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,12 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ i
   const { paymentMethod, shippingFee } = parseOrderNotes(order.notes);
   const itemsTotal = Number(order.total);
   const grandTotal = itemsTotal + (shippingFee ?? 0);
+
+  // Only fetch site settings to decide whether to render the OTP/call buttons
+  // — never expose admin-only fields (api key, sender id) to the client.
+  const settings = await apiClient.getSiteSettings();
+  const showConfirmActions =
+    settings.winsms.enabled && (order.status || "").toLowerCase() === "pending";
 
   return (
     <div className="container-x py-10 max-w-2xl mx-auto">
@@ -80,6 +87,7 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ i
         <div className="text-sm text-kraft-600 mt-3">Paiement : {paymentMethodLabel(paymentMethod)}</div>
         <div className="text-sm text-kraft-600">Statut : {statusLabel(order.status)}</div>
       </div>
+      {showConfirmActions && <OrderConfirmActions orderId={order.id} />}
       <div className="text-center mt-6">
         <Link href="/products" className="btn-primary">Continuer mes achats</Link>
       </div>

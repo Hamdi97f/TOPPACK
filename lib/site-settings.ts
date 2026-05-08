@@ -573,6 +573,63 @@ export function normaliseBoxComparatorSettings(input: unknown): BoxComparatorSet
 }
 
 // ---------------------------------------------------------------------------
+// WinSMS / OTP order-auto-confirmation section
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for the WinSMS.tn integration that powers the optional
+ * "auto-confirm by SMS OTP" flow shown on the order confirmation page.
+ *
+ * - `enabled` toggles the feature on the storefront. When false the buttons
+ *   are not rendered and the OTP/send/verify endpoints reject calls.
+ * - `apiKey` is the WinSMS API key. It is server-side only and **never**
+ *   exposed through `/api/site-settings/public`.
+ * - `senderId` is the approved alphanumeric sender shown to the customer
+ *   (e.g. "TOPPACK"). WinSMS rejects unapproved IDs with code 106.
+ * - `otpMessage` is the text sent to the customer. The substring `{code}`
+ *   is replaced with the freshly-generated 6-digit OTP. If the template
+ *   doesn't contain `{code}` the OTP is appended on its own line.
+ *
+ * Sender IDs on WinSMS are uppercase letters/digits/spaces/dashes, max 11
+ * characters. We enforce that conservatively here so a malformed value can
+ * never be persisted and silently rejected by the gateway.
+ */
+export interface WinSmsSettings {
+  enabled: boolean;
+  apiKey: string;
+  senderId: string;
+  otpMessage: string;
+}
+
+export const WINSMS_SENDER_ID_RE = /^[A-Za-z0-9 _-]{1,11}$/;
+export const WINSMS_DEFAULT_OTP_MESSAGE =
+  "Votre code de confirmation TOPPACK est : {code}";
+
+export function defaultWinSmsSettings(): WinSmsSettings {
+  return {
+    enabled: false,
+    apiKey: "",
+    senderId: "",
+    otpMessage: WINSMS_DEFAULT_OTP_MESSAGE,
+  };
+}
+
+export function normaliseWinSmsSettings(input: unknown): WinSmsSettings {
+  const defaults = defaultWinSmsSettings();
+  if (!input || typeof input !== "object") return defaults;
+  const r = input as Record<string, unknown>;
+  const rawSender = trimString(r.senderId, 11);
+  const senderId = WINSMS_SENDER_ID_RE.test(rawSender) ? rawSender : "";
+  const apiKey = trimString(r.apiKey, 200);
+  const otpMessage = trimString(r.otpMessage, 320) || defaults.otpMessage;
+  // The feature is only meaningful when both an api key and a sender id are
+  // configured. Refuse to enable it otherwise so the customer never sees a
+  // button that would always fail.
+  const enabled = r.enabled === true && !!apiKey && !!senderId;
+  return { enabled, apiKey, senderId, otpMessage };
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -586,6 +643,7 @@ export interface SiteSettings {
   devis: DevisFormSettings;
   liveEdits: LiveEditsSettings;
   boxComparator: BoxComparatorSettings;
+  winsms: WinSmsSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -599,6 +657,7 @@ export function defaultSiteSettings(): SiteSettings {
     devis: defaultDevisFormSettings(),
     liveEdits: defaultLiveEditsSettings(),
     boxComparator: defaultBoxComparatorSettings(),
+    winsms: defaultWinSmsSettings(),
   };
 }
 
@@ -615,6 +674,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     devis: normaliseDevisFormSettings(r.devis),
     liveEdits: normaliseLiveEditsSettings(r.liveEdits),
     boxComparator: normaliseBoxComparatorSettings(r.boxComparator),
+    winsms: normaliseWinSmsSettings(r.winsms),
   };
 }
 

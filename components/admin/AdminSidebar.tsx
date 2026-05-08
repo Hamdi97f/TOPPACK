@@ -18,6 +18,7 @@ const links = [
   { href: "/admin/settings/branding", label: "Identité du site" },
   { href: "/admin/settings/box-comparator", label: "Comparateur 3D" },
   { href: "/admin/settings/integrations", label: "Intégrations" },
+  { href: "/admin/settings/winsms", label: "Confirmation SMS" },
   { href: "/admin/settings/account", label: "Comptes clients" },
 ];
 
