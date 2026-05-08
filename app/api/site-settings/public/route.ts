@@ -12,5 +12,6 @@ export async function GET() {
     requireAccountForOrder: settings.account.requireAccountForOrder,
     metaPixelEnabled: !!settings.integrations.metaPixelId,
     shipping: settings.shipping,
+    winsmsAutoConfirmEnabled: settings.winsms.enabled,
   });
 }
