@@ -12,6 +12,7 @@ import {
   type OrderStatus,
   type PaymentMethod,
 } from "@/lib/utils";
+import { TUNISIA_GOVERNORATES } from "@/lib/tunisia-governorates";
 
 export type ManualOrderProduct = {
   id: string;
@@ -260,11 +261,15 @@ export function ManualOrderForm({ products }: { products: ManualOrderProduct[] }
           </div>
           <div>
             <label className="label" htmlFor="city">Ville</label>
-            <input
-              id="city" type="text" maxLength={100}
+            <select
+              id="city" className="select"
               value={city} onChange={(e) => setCity(e.target.value)}
-              className="input"
-            />
+            >
+              <option value="">— Sélectionnez un gouvernorat —</option>
+              {TUNISIA_GOVERNORATES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label" htmlFor="postalCode">Code postal</label>
