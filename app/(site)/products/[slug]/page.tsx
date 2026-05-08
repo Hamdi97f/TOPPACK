@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
@@ -77,6 +78,34 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             requireAccount={siteSettings.account.requireAccountForOrder}
           />
         </div>
+
+        {siteSettings.boxComparator.enabled
+          && product.lengthCm > 0
+          && product.widthCm > 0
+          && product.heightCm > 0 && (
+          <div className="mt-4">
+            <Link
+              href={{
+                pathname: "/box-comparator",
+                query: {
+                  l: Math.round(product.lengthCm * 10),
+                  w: Math.round(product.widthCm * 10),
+                  h: Math.round(product.heightCm * 10),
+                  name: product.name,
+                },
+              }}
+              className="inline-flex items-center gap-2 rounded border border-kraft-300 bg-white px-4 py-2 text-sm font-medium text-kraft-900 hover:bg-kraft-50 transition"
+              aria-label={`Comparer ${product.name} en 3D avec des objets du quotidien`}
+            >
+              <span aria-hidden>🧊</span>
+              Comparer en 3D
+            </Link>
+            <p className="mt-1 text-xs text-kraft-600">
+              Visualisez en 3D la taille de ce carton et choisissez un objet
+              à comparer.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

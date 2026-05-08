@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   BOX_DIM_MAX_MM,
   BOX_DIM_MIN_MM,
@@ -9,7 +10,9 @@ import {
   ITEM_QTY_MAX,
   clampDim,
   packItems,
+  type ItemPreset,
 } from "@/lib/box-comparator-data";
+import { Item3D } from "./Item3D";
 
 const CUSTOM_PRESET_ID = "__custom__";
 
@@ -23,8 +26,11 @@ interface SceneBox {
   color: string;
   // When true the block is rendered as a transparent wireframe (the carton)
   wireframe: boolean;
-  // When true the block uses cylinder-ish shading (rounded ends faces)
-  rounded?: boolean;
+  /** When non-null, the item should be rendered with the matching preset's
+   *  shape-aware renderer instead of a flat cuboid. */
+  preset?: ItemPreset;
+  /** Orientation chosen by the packer (so the shape can rotate to match). */
+  orientation?: { l: number; w: number; h: number };
 }
 
 /**
@@ -34,20 +40,46 @@ interface SceneBox {
  * devices) to zoom.
  */
 export function BoxComparatorClient() {
+  return (
+    <Suspense fallback={null}>
+      <BoxComparatorClientInner />
+    </Suspense>
+  );
+}
+
+function BoxComparatorClientInner() {
+  // -- URL-driven defaults (e.g. when navigating from a product page) -------
+  const searchParams = useSearchParams();
+  const initial = useMemo(() => {
+    const parse = (key: string) => {
+      const raw = searchParams?.get(key);
+      if (!raw) return null;
+      const n = parseFloat(raw);
+      if (!Number.isFinite(n)) return null;
+      return clampDim(n);
+    };
+    const l = parse("l");
+    const w = parse("w");
+    const h = parse("h");
+    const name = searchParams?.get("name")?.slice(0, 120) ?? null;
+    return { l, w, h, name };
+  }, [searchParams]);
+
   // -- Box selection --------------------------------------------------------
-  const [boxPresetId, setBoxPresetId] = useState<string>(BOX_PRESETS[1].id);
+  const initialPreset = initial.l && initial.w && initial.h ? CUSTOM_PRESET_ID : BOX_PRESETS[1].id;
+  const [boxPresetId, setBoxPresetId] = useState<string>(initialPreset);
   const presetBox = useMemo(
     () => BOX_PRESETS.find((p) => p.id === boxPresetId),
     [boxPresetId],
   );
-  const [customL, setCustomL] = useState<number>(BOX_PRESETS[1].l);
-  const [customW, setCustomW] = useState<number>(BOX_PRESETS[1].w);
-  const [customH, setCustomH] = useState<number>(BOX_PRESETS[1].h);
+  const [customL, setCustomL] = useState<number>(initial.l ?? BOX_PRESETS[1].l);
+  const [customW, setCustomW] = useState<number>(initial.w ?? BOX_PRESETS[1].w);
+  const [customH, setCustomH] = useState<number>(initial.h ?? BOX_PRESETS[1].h);
   // Raw text mirrors of the custom-dim inputs so the user can momentarily
   // clear a field without it snapping to the minimum value.
-  const [customLText, setCustomLText] = useState<string>(String(BOX_PRESETS[1].l));
-  const [customWText, setCustomWText] = useState<string>(String(BOX_PRESETS[1].w));
-  const [customHText, setCustomHText] = useState<string>(String(BOX_PRESETS[1].h));
+  const [customLText, setCustomLText] = useState<string>(String(initial.l ?? BOX_PRESETS[1].l));
+  const [customWText, setCustomWText] = useState<string>(String(initial.w ?? BOX_PRESETS[1].w));
+  const [customHText, setCustomHText] = useState<string>(String(initial.h ?? BOX_PRESETS[1].h));
 
   const box = useMemo(() => {
     if (presetBox) return { l: presetBox.l, w: presetBox.w, h: presetBox.h };
@@ -88,7 +120,8 @@ export function BoxComparatorClient() {
         l: o.l, w: o.w, h: o.h,
         color: item.color,
         wireframe: false,
-        rounded: item.id.startsWith("bottle") || item.id === "can-33cl" || item.id === "mug" || item.id === "cube-tennis",
+        preset: item,
+        orientation: o,
       });
     }
     return out;
@@ -155,6 +188,19 @@ export function BoxComparatorClient() {
       {/* Controls panel                                                     */}
       {/* ------------------------------------------------------------------ */}
       <aside className="space-y-5">
+        {initial.name && (
+          <div className="card p-3 text-sm bg-kraft-50 border-kraft-200">
+            <div className="text-xs uppercase tracking-wide text-kraft-600">
+              Carton sélectionné
+            </div>
+            <div className="font-semibold text-kraft-900">{initial.name}</div>
+            {initial.l && initial.w && initial.h && (
+              <div className="text-xs text-kraft-700 mt-0.5 tabular-nums">
+                {initial.l} × {initial.w} × {initial.h} mm
+              </div>
+            )}
+          </div>
+        )}
         <div className="card p-4 space-y-3">
           <div>
             <label className="block text-sm font-semibold text-kraft-900 mb-1" htmlFor="box-preset">
@@ -336,7 +382,7 @@ export function BoxComparatorClient() {
               }}
             />
             {scene.map((b, i) => (
-              <Box3D key={i} box={b} scale={totalScale} />
+              <SceneNode key={i} box={b} scale={totalScale} />
             ))}
           </div>
           <div className="absolute bottom-2 left-2 right-2 text-[11px] text-kraft-700/80 pointer-events-none">
@@ -344,6 +390,48 @@ export function BoxComparatorClient() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Dispatch a scene node to either a flat Box3D (the carton wireframe) or a
+ * shape-aware Item3D (real-looking objects).
+ */
+function SceneNode({ box, scale }: { box: SceneBox; scale: number }) {
+  const lpx = box.l * scale;
+  const wpx = box.w * scale;
+  const hpx = box.h * scale;
+  const wrapper: React.CSSProperties = {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    transformStyle: "preserve-3d",
+    // Coordinate remap from box space to CSS 3D screen space:
+    //   cx (length axis) → screen X
+    //   cz (height axis) → screen Y inverted (CSS +Y is downward, so up is -Y)
+    //   cy (depth axis)  → screen Z (into the screen)
+    transform: `translate3d(${box.cx * scale}px, ${box.cz * scale * -1}px, ${box.cy * scale}px)`,
+    pointerEvents: "none",
+  };
+
+  if (box.wireframe || !box.preset || !box.orientation) {
+    return (
+      <div style={wrapper}>
+        <Box3D box={box} scale={scale} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={wrapper}>
+      <Item3D
+        lpx={lpx}
+        wpx={wpx}
+        hpx={hpx}
+        orientation={box.orientation}
+        preset={box.preset}
+      />
     </div>
   );
 }
@@ -371,7 +459,6 @@ function Box3D({ box, scale }: { box: SceneBox; scale: number }) {
         border: "1px solid rgba(0,0,0,0.25)",
         boxSizing: "border-box",
         boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
-        borderRadius: box.rounded ? 4 : 0,
       };
 
   // Tint each face slightly differently for shading.
@@ -385,11 +472,6 @@ function Box3D({ box, scale }: { box: SceneBox; scale: number }) {
     left: 0,
     top: 0,
     transformStyle: "preserve-3d",
-    // Coordinate remap from box space to CSS 3D screen space:
-    //   cx (length axis) → screen X
-    //   cz (height axis) → screen Y inverted (CSS +Y is downward, so up is -Y)
-    //   cy (depth axis)  → screen Z (into the screen)
-    transform: `translate3d(${box.cx * scale}px, ${box.cz * scale * -1}px, ${box.cy * scale}px)`,
     pointerEvents: "none",
   };
 
