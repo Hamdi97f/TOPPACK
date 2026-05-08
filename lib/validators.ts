@@ -134,6 +134,56 @@ export const orderStatusUpdateSchema = z.object({
 });
 
 /**
+ * Schema used by the admin "edit order" form. Every field is optional so the
+ * client can send a partial patch, but each present field is bounded the same
+ * way as the create schema. `items[].unitPriceOverride` is only honoured when
+ * `overridePrice` is true; otherwise the api-gateway recomputes the unit
+ * price from the catalog (matching the storefront and the manual-create
+ * flow).
+ */
+export const adminOrderUpdateSchema = z.object({
+  status: z.enum(ORDER_STATUSES).optional(),
+  customerName: z.string().trim().max(200).optional(),
+  customerEmail: z
+    .union([z.string().trim().email().max(200), z.literal("")])
+    .optional(),
+  customerPhone: z.string().trim().max(50).optional(),
+  addressLine: z.string().trim().max(300).optional(),
+  city: z.string().trim().max(100).optional(),
+  postalCode: z.string().trim().max(30).optional(),
+  country: z.string().trim().max(100).optional(),
+  notes: z.string().trim().max(2000).optional(),
+  paymentMethod: z.enum(PAYMENT_METHODS).optional(),
+  shippingFee: z
+    .union([z.coerce.number().nonnegative().max(1_000_000), z.literal(""), z.null()])
+    .optional()
+    .transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)),
+  mescolisBarcode: z
+    .union([
+      z.string().trim().regex(/^[A-Za-z0-9_-]*$/, "Code-barres invalide").max(100),
+      z.literal(""),
+      z.null(),
+    ])
+    .optional()
+    .transform((v) => (typeof v === "string" && v ? v : null)),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.coerce.number().int().positive().max(10000),
+        overridePrice: z.coerce.boolean().optional().default(false),
+        unitPriceOverride: z
+          .union([z.coerce.number().nonnegative().max(1_000_000), z.literal(""), z.null()])
+          .optional()
+          .transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)),
+      })
+    )
+    .min(1)
+    .max(100)
+    .optional(),
+});
+
+/**
  * Schema used by the admin "manual order" form. Requirements are looser than
  * the customer-facing checkout — no field is forced visible/required, the
  * admin chooses an initial status, and `paymentMethod` is constrained to the
