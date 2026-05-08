@@ -691,6 +691,109 @@ export function normaliseMesColisSettings(input: unknown): MesColisSettings {
 }
 
 // ---------------------------------------------------------------------------
+// Live chat section
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for the optional storefront live-chat widget.
+ *
+ * - `enabled` toggles the floating chat bubble on the public site. When
+ *   false the widget is not rendered at all.
+ * - `botMode` makes the widget answer automatically using the predefined
+ *   Q&A list below. When false, the widget still accepts messages but only
+ *   shows a generic "we'll get back to you" acknowledgement (since there
+ *   is no live agent backend in this app).
+ * - `welcomeMessage` is the first message displayed when the panel opens.
+ * - `qa` is the list of standard questions and replies used by the bot.
+ *   Exactly `CHAT_QA_COUNT` entries are stored; missing/extra ones are
+ *   filled in or trimmed by the normaliser so the admin form always has a
+ *   stable shape to edit.
+ */
+export const CHAT_QA_COUNT = 5;
+
+export interface ChatQAPair {
+  question: string;
+  answer: string;
+}
+
+export interface ChatSettings {
+  enabled: boolean;
+  botMode: boolean;
+  welcomeMessage: string;
+  qa: ChatQAPair[];
+}
+
+export const CHAT_DEFAULT_WELCOME =
+  "Bonjour ! Comment pouvons-nous vous aider aujourd'hui ?";
+
+const CHAT_DEFAULT_QA: ChatQAPair[] = [
+  {
+    question: "Quels sont vos délais de livraison ?",
+    answer:
+      "Nos commandes sont expédiées sous 24 à 48 heures ouvrées et livrées en 2 à 4 jours partout en Tunisie.",
+  },
+  {
+    question: "Quels modes de paiement acceptez-vous ?",
+    answer:
+      "Nous acceptons le paiement à la livraison ainsi que le virement bancaire. Le paiement par carte sera bientôt disponible.",
+  },
+  {
+    question: "Proposez-vous des prix de gros ?",
+    answer:
+      "Oui, nous proposons des tarifs dégressifs pour les commandes en gros. Contactez-nous via le formulaire de devis pour recevoir une offre personnalisée.",
+  },
+  {
+    question: "Comment suivre ma commande ?",
+    answer:
+      "Une fois votre commande confirmée, vous recevez un numéro de suivi. Vous pouvez aussi consulter l'état de votre commande depuis votre espace client.",
+  },
+  {
+    question: "Comment vous contacter ?",
+    answer:
+      "Vous pouvez nous joindre via la page Contact, par e-mail ou par téléphone aux horaires d'ouverture indiqués en bas de page.",
+  },
+];
+
+export function defaultChatSettings(): ChatSettings {
+  return {
+    enabled: false,
+    botMode: true,
+    welcomeMessage: CHAT_DEFAULT_WELCOME,
+    qa: CHAT_DEFAULT_QA.map((p) => ({ ...p })),
+  };
+}
+
+export function normaliseChatSettings(input: unknown): ChatSettings {
+  const defaults = defaultChatSettings();
+  if (!input || typeof input !== "object") return defaults;
+  const r = input as Record<string, unknown>;
+  const welcomeMessage =
+    trimString(r.welcomeMessage, 280) || defaults.welcomeMessage;
+
+  const incoming = Array.isArray(r.qa) ? r.qa : [];
+  const qa: ChatQAPair[] = [];
+  for (let i = 0; i < CHAT_QA_COUNT; i += 1) {
+    const raw = incoming[i];
+    const fallback = defaults.qa[i];
+    if (!raw || typeof raw !== "object") {
+      qa.push({ ...fallback });
+      continue;
+    }
+    const rec = raw as Record<string, unknown>;
+    const question = trimString(rec.question, 200) || fallback.question;
+    const answer = trimString(rec.answer, 600) || fallback.answer;
+    qa.push({ question, answer });
+  }
+
+  return {
+    enabled: r.enabled === true,
+    botMode: r.botMode !== false, // default true so the widget is always useful
+    welcomeMessage,
+    qa,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -706,6 +809,7 @@ export interface SiteSettings {
   boxComparator: BoxComparatorSettings;
   winsms: WinSmsSettings;
   mescolis: MesColisSettings;
+  chat: ChatSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -721,6 +825,7 @@ export function defaultSiteSettings(): SiteSettings {
     boxComparator: defaultBoxComparatorSettings(),
     winsms: defaultWinSmsSettings(),
     mescolis: defaultMesColisSettings(),
+    chat: defaultChatSettings(),
   };
 }
 
@@ -739,6 +844,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     boxComparator: normaliseBoxComparatorSettings(r.boxComparator),
     winsms: normaliseWinSmsSettings(r.winsms),
     mescolis: normaliseMesColisSettings(r.mescolis),
+    chat: normaliseChatSettings(r.chat),
   };
 }
 

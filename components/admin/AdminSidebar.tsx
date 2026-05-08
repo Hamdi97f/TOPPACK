@@ -20,6 +20,7 @@ const links = [
   { href: "/admin/settings/integrations", label: "Intégrations" },
   { href: "/admin/settings/winsms", label: "Confirmation SMS" },
   { href: "/admin/settings/mescolis", label: "Compagnie de livraison" },
+  { href: "/admin/settings/chat", label: "Chat en direct" },
   { href: "/admin/settings/account", label: "Comptes clients" },
 ];
 
