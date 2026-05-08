@@ -52,6 +52,15 @@ import {
   packDevisDescription,
   unpackDevisDescription,
 } from "@/lib/devis";
+import {
+  buildReviewCategoryName,
+  isReviewCategoryName,
+  packReviewDescription,
+  parseReviewCategoryName,
+  type ReviewPayload,
+  type ReviewRecord,
+  unpackReviewDescription,
+} from "@/lib/reviews";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -823,6 +832,55 @@ export const apiClient = {
   },
 
   async deleteDevis(token: string, id: string): Promise<{ success: boolean }> {
+    return this.deleteCategory(token, id);
+  },
+
+  // Reviews ("avis client") — stored as hidden `__avis__:<productId>:<iso>` categories
+  async listProductReviews(
+    token: string | null | undefined,
+    productId: string
+  ): Promise<ReviewRecord[]> {
+    const cats = await this._listAllCategories(token);
+    const records: ReviewRecord[] = [];
+    for (const c of cats) {
+      const parsed = parseReviewCategoryName(c.name);
+      if (!parsed || parsed.productId !== productId) continue;
+      const payload = unpackReviewDescription(c.description);
+      if (!payload) continue;
+      records.push({
+        ...payload,
+        id: c.id,
+        productId: parsed.productId,
+        createdAt: parsed.createdAt,
+      });
+    }
+    // Newest first.
+    records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return records;
+  },
+
+  async createProductReview(
+    token: string,
+    productId: string,
+    payload: ReviewPayload
+  ): Promise<ReviewRecord> {
+    const createdAt = new Date().toISOString();
+    const description = packReviewDescription(payload);
+    const cat = await this.createCategory(token, {
+      name: buildReviewCategoryName(productId, createdAt),
+      description,
+    });
+    return { ...payload, id: cat.id, productId, createdAt };
+  },
+
+  async deleteProductReview(token: string, id: string): Promise<{ success: boolean }> {
+    // Defence in depth: refuse to delete a category that isn't a review record,
+    // so a leaked id can't be used to wipe a real category through this route.
+    const cats = await this._listAllCategories(token);
+    const target = cats.find((c) => c.id === id);
+    if (!target || !isReviewCategoryName(target.name)) {
+      throw new ApiError(404, "Avis introuvable");
+    }
     return this.deleteCategory(token, id);
   },
 

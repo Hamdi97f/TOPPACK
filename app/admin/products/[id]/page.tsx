@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { adaptCategory, adaptProduct, apiClient, ApiError } from "@/lib/api-client";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { ProductReviewsManager } from "@/components/admin/ProductReviewsManager";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,19 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     throw err;
   }
   const product = adaptProduct(raw);
-  const categories = (await apiClient.listCategories(token).catch(() => [])).map(adaptCategory);
+  const [categoriesRaw, reviews] = await Promise.all([
+    apiClient.listCategories(token).catch(() => []),
+    apiClient.listProductReviews(token, product.id).catch(() => []),
+  ]);
+  const categories = categoriesRaw.map(adaptCategory);
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-kraft-900 mb-4">Modifier le produit</h1>
-      <ProductForm categories={categories} mode={{ kind: "edit", product }} />
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-kraft-900 mb-4">Modifier le produit</h1>
+        <ProductForm categories={categories} mode={{ kind: "edit", product }} />
+      </div>
+      <ProductReviewsManager productId={product.id} initialReviews={reviews} />
     </div>
   );
 }
