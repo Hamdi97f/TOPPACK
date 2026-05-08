@@ -68,8 +68,12 @@ export function OrderEditForm({
       const catalogPrice = catalog ? Number(catalog.price) : 0;
       // Treat a unit price that differs from the current catalog price as an
       // explicit override so we don't silently snap it back on save.
+      // Prices are denominated in millimes (1/1000 DT) so a tolerance below
+      // half a millime (0.0005 DT) covers rounding artefacts without masking
+      // a genuine price change.
+      const PRICE_EPSILON_DT = 0.0005;
       const overridePrice =
-        !catalog || Math.abs(catalogPrice - it.unitPrice) > 0.0005;
+        !catalog || Math.abs(catalogPrice - it.unitPrice) > PRICE_EPSILON_DT;
       return {
         productId: it.productId,
         quantity: it.quantity,
