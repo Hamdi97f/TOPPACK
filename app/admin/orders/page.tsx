@@ -13,14 +13,24 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   if (!session || session.user.role !== "ADMIN") redirect("/login?callbackUrl=/admin/orders");
   const token = session.user.apiToken;
 
-  const { status } = await searchParams;
+  const { status: statusParam } = await searchParams;
+  // Default to "pending" (En attente) when no filter is provided.
+  // Use the explicit value "all" to show every status.
+  let status: string;
+  if (statusParam === "all") {
+    status = "all";
+  } else if (statusParam && (ORDER_STATUSES as readonly string[]).includes(statusParam)) {
+    status = statusParam;
+  } else {
+    status = "pending";
+  }
   const all = await apiClient.listOrders(token).catch((e) => { console.error("[admin/orders] failed", e); return []; });
-  const orders = (status && (ORDER_STATUSES as readonly string[]).includes(status)
+  const orders = (status !== "all"
     ? all.filter((o) => o.status === status)
     : all)
     .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
     .slice(0, 200);
-  const exportHref = `/api/admin/orders/export${status ? `?status=${encodeURIComponent(status)}` : ""}`;
+  const exportHref = `/api/admin/orders/export${status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`;
   return (
     <div>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
@@ -36,8 +46,8 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       </div>
       <form className="mb-4 flex items-center gap-2">
         <label htmlFor="status" className="text-sm">Statut :</label>
-        <select id="status" name="status" defaultValue={status ?? ""} className="select max-w-xs">
-          <option value="">Tous</option>
+        <select id="status" name="status" defaultValue={status} className="select max-w-xs">
+          <option value="all">Tous</option>
           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
         </select>
         <button type="submit" className="btn-secondary !py-1 !px-3 text-sm">Filtrer</button>
