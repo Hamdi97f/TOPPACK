@@ -31,11 +31,15 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
     .slice(0, 200);
   const exportHref = `/api/admin/orders/export${status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`;
+  const preparationHref = `/admin/orders/preparation${status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`;
   return (
     <div>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <h1 className="text-2xl font-bold text-kraft-900">Commandes</h1>
         <div className="flex flex-wrap gap-2">
+          <Link href={preparationHref} className="btn-secondary !py-1 !px-3 text-sm">
+            Bon de préparation
+          </Link>
           <a href={exportHref} className="btn-secondary !py-1 !px-3 text-sm" download>
             Exporter CSV
           </a>
