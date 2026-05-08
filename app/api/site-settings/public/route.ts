@@ -13,5 +13,6 @@ export async function GET() {
     metaPixelEnabled: !!settings.integrations.metaPixelId,
     shipping: settings.shipping,
     winsmsAutoConfirmEnabled: settings.winsms.enabled,
+    chat: settings.chat,
   });
 }
