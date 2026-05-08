@@ -22,8 +22,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     ? allCategories.map(adaptCategory).find((c) => c.id === product.categoryId)
     : null;
 
+  const canCompare3D = siteSettings.boxComparator.enabled
+    && product.lengthCm > 0
+    && product.widthCm > 0
+    && product.heightCm > 0;
+
   return (
-    <div className="container-x py-8 grid md:grid-cols-2 gap-8">
+    <div className="container-x py-6 sm:py-8 grid md:grid-cols-2 gap-6 sm:gap-8">
       <div className="card aspect-square bg-kraft-100 flex items-center justify-center text-9xl relative overflow-hidden">
         {product.imageUrl ? (
           <Image
@@ -37,14 +42,32 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         ) : (
           <span aria-hidden>📦</span>
         )}
+        {canCompare3D && (
+          <Link
+            href={{
+              pathname: "/box-comparator",
+              query: {
+                l: Math.round(product.lengthCm * 10),
+                w: Math.round(product.widthCm * 10),
+                h: Math.round(product.heightCm * 10),
+                name: product.name,
+              },
+            }}
+            className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm font-semibold text-kraft-900 shadow-md ring-1 ring-kraft-200 hover:bg-white hover:shadow-lg transition"
+            aria-label={`Comparer ${product.name} en 3D avec des objets du quotidien`}
+          >
+            <span aria-hidden>🧊</span>
+            <span>Comparer en 3D</span>
+          </Link>
+        )}
       </div>
       <div>
         {category && <div className="text-sm text-kraft-600">{category.name}</div>}
-        <h1 className="text-3xl font-bold text-kraft-900 mt-1">{product.name}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-kraft-900 mt-1">{product.name}</h1>
         {product.promoPrice != null && product.regularPrice != null ? (
-          <div className="mt-3 flex items-baseline gap-3">
+          <div className="mt-3 flex flex-wrap items-baseline gap-2 sm:gap-3">
             <span className="text-2xl font-bold text-red-700">{formatPrice(product.price)}</span>
-            <span className="text-lg text-kraft-500 line-through">{formatPrice(product.regularPrice)}</span>
+            <span className="text-base sm:text-lg text-kraft-500 line-through">{formatPrice(product.regularPrice)}</span>
             <span className="bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">Promo</span>
           </div>
         ) : (
@@ -79,33 +102,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           />
         </div>
 
-        {siteSettings.boxComparator.enabled
-          && product.lengthCm > 0
-          && product.widthCm > 0
-          && product.heightCm > 0 && (
-          <div className="mt-4">
-            <Link
-              href={{
-                pathname: "/box-comparator",
-                query: {
-                  l: Math.round(product.lengthCm * 10),
-                  w: Math.round(product.widthCm * 10),
-                  h: Math.round(product.heightCm * 10),
-                  name: product.name,
-                },
-              }}
-              className="inline-flex items-center gap-2 rounded border border-kraft-300 bg-white px-4 py-2 text-sm font-medium text-kraft-900 hover:bg-kraft-50 transition"
-              aria-label={`Comparer ${product.name} en 3D avec des objets du quotidien`}
-            >
-              <span aria-hidden>🧊</span>
-              Comparer en 3D
-            </Link>
-            <p className="mt-1 text-xs text-kraft-600">
-              Visualisez en 3D la taille de ce carton et choisissez un objet
-              à comparer.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
