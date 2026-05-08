@@ -403,12 +403,16 @@ export function buildShippingAddress(f: Pick<OrderShippingFields, "customerPhone
 export function buildOrderNotes(
   paymentMethod: string,
   notes: string | null | undefined,
-  shippingFee?: number | null
+  shippingFee?: number | null,
+  mescolisBarcode?: string | null
 ): string {
   const lines = [`PAYMENT: ${paymentMethod}`];
   if (typeof shippingFee === "number" && Number.isFinite(shippingFee) && shippingFee > 0) {
     // Persist with 3 decimal places to match the dinar's millime precision.
     lines.push(`SHIPPING: ${shippingFee.toFixed(3)}`);
+  }
+  if (mescolisBarcode && /^[A-Za-z0-9_-]+$/.test(mescolisBarcode)) {
+    lines.push(`MESCOLIS: ${mescolisBarcode}`);
   }
   if (notes) lines.push(notes);
   return lines.join("\n");
@@ -417,12 +421,14 @@ export function buildOrderNotes(
 export function parseOrderNotes(notes: string | null | undefined): {
   paymentMethod: string | null;
   shippingFee: number | null;
+  mescolisBarcode: string | null;
   text: string;
 } {
-  if (!notes) return { paymentMethod: null, shippingFee: null, text: "" };
+  if (!notes) return { paymentMethod: null, shippingFee: null, mescolisBarcode: null, text: "" };
   let remaining = notes;
   let paymentMethod: string | null = null;
   let shippingFee: number | null = null;
+  let mescolisBarcode: string | null = null;
   const payMatch = remaining.match(/^PAYMENT:\s*(\S+)\s*\n?/);
   if (payMatch) {
     paymentMethod = payMatch[1];
@@ -434,7 +440,12 @@ export function parseOrderNotes(notes: string | null | undefined): {
     if (Number.isFinite(v) && v >= 0) shippingFee = v;
     remaining = remaining.slice(shipMatch[0].length);
   }
-  return { paymentMethod, shippingFee, text: remaining };
+  const mescolisMatch = remaining.match(/^MESCOLIS:\s*([A-Za-z0-9_-]+)\s*\n?/);
+  if (mescolisMatch) {
+    mescolisBarcode = mescolisMatch[1];
+    remaining = remaining.slice(mescolisMatch[0].length);
+  }
+  return { paymentMethod, shippingFee, mescolisBarcode, text: remaining };
 }
 
 export function parseShippingAddress(addr: string | null | undefined): {

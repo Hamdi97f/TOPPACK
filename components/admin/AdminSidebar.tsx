@@ -19,6 +19,7 @@ const links = [
   { href: "/admin/settings/box-comparator", label: "Comparateur 3D" },
   { href: "/admin/settings/integrations", label: "Intégrations" },
   { href: "/admin/settings/winsms", label: "Confirmation SMS" },
+  { href: "/admin/settings/mescolis", label: "Compagnie de livraison" },
   { href: "/admin/settings/account", label: "Comptes clients" },
 ];
 

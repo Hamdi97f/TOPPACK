@@ -630,6 +630,45 @@ export function normaliseWinSmsSettings(input: unknown): WinSmsSettings {
 }
 
 // ---------------------------------------------------------------------------
+// Mes Colis Express (shipping company) section
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for the optional integration with Mes Colis Express
+ * (https://api.mescolis.tn). Used by the admin "Synchroniser avec la
+ * compagnie de livraison" button to push every confirmed order to the
+ * shipping company in one click.
+ *
+ * - `enabled` toggles the feature in the admin UI. When false the sync
+ *   button is hidden and the sync API rejects calls.
+ * - `apiToken` is the `x-access-token` provided by the Mes Colis Express
+ *   administrator. It is stored server-side only and is **never** exposed
+ *   through `/api/site-settings/public`.
+ *
+ * The optional fields in the create-order payload (Tel2, exchange,
+ * open_ordre) are kept off by default — they can be tweaked per-order via
+ * the order notes if needed.
+ */
+export interface MesColisSettings {
+  enabled: boolean;
+  apiToken: string;
+}
+
+export function defaultMesColisSettings(): MesColisSettings {
+  return { enabled: false, apiToken: "" };
+}
+
+export function normaliseMesColisSettings(input: unknown): MesColisSettings {
+  const defaults = defaultMesColisSettings();
+  if (!input || typeof input !== "object") return defaults;
+  const r = input as Record<string, unknown>;
+  const apiToken = trimString(r.apiToken, 500);
+  // The feature is only meaningful when an api token is configured.
+  const enabled = r.enabled === true && !!apiToken;
+  return { enabled, apiToken };
+}
+
+// ---------------------------------------------------------------------------
 // Top-level SiteSettings
 // ---------------------------------------------------------------------------
 
@@ -644,6 +683,7 @@ export interface SiteSettings {
   liveEdits: LiveEditsSettings;
   boxComparator: BoxComparatorSettings;
   winsms: WinSmsSettings;
+  mescolis: MesColisSettings;
 }
 
 export function defaultSiteSettings(): SiteSettings {
@@ -658,6 +698,7 @@ export function defaultSiteSettings(): SiteSettings {
     liveEdits: defaultLiveEditsSettings(),
     boxComparator: defaultBoxComparatorSettings(),
     winsms: defaultWinSmsSettings(),
+    mescolis: defaultMesColisSettings(),
   };
 }
 
@@ -675,6 +716,7 @@ export function normaliseSiteSettings(input: unknown): SiteSettings {
     liveEdits: normaliseLiveEditsSettings(r.liveEdits),
     boxComparator: normaliseBoxComparatorSettings(r.boxComparator),
     winsms: normaliseWinSmsSettings(r.winsms),
+    mescolis: normaliseMesColisSettings(r.mescolis),
   };
 }
 

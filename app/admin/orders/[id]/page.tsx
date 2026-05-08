@@ -31,7 +31,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   const products = await apiClient.listProducts(token).catch(() => []);
   const productById = new Map(products.map((p) => [p.id, adaptProduct(p)]));
-  const { paymentMethod, shippingFee, text: noteText } = parseOrderNotes(order.notes);
+  const { paymentMethod, shippingFee, mescolisBarcode, text: noteText } = parseOrderNotes(order.notes);
   const shipping = parseShippingAddress(order.shipping_address);
   const itemsTotal = Number(order.total);
   const grandTotal = itemsTotal + (shippingFee ?? 0);
@@ -145,6 +145,9 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       <section className="card p-4 mt-4 text-sm">
         <div><strong>Paiement :</strong> {paymentMethodLabel(paymentMethod)}</div>
         <div><strong>Statut :</strong> {statusLabel(order.status)}</div>
+        {mescolisBarcode && (
+          <div><strong>Mes Colis Express :</strong> <span className="font-mono">{mescolisBarcode}</span></div>
+        )}
         {noteText && <div className="mt-2"><strong>Notes :</strong> {noteText}</div>}
       </section>
     </div>

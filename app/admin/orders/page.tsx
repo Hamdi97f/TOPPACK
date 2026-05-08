@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { apiClient } from "@/lib/api-client";
 import { formatPrice, ORDER_STATUSES, statusLabel } from "@/lib/utils";
 import { OrderDeleteButton } from "@/components/admin/OrderDeleteButton";
+import { MesColisSyncButton } from "@/components/admin/MesColisSyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,10 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   } else {
     status = "pending";
   }
-  const all = await apiClient.listOrders(token).catch((e) => { console.error("[admin/orders] failed", e); return []; });
+  const [all, settings] = await Promise.all([
+    apiClient.listOrders(token).catch((e) => { console.error("[admin/orders] failed", e); return []; }),
+    apiClient.getSiteSettings(token).catch(() => null),
+  ]);
   const orders = (status !== "all"
     ? all.filter((o) => o.status === status)
     : all)
@@ -32,11 +36,13 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     .slice(0, 200);
   const exportHref = `/api/admin/orders/export${status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`;
   const preparationHref = `/admin/orders/preparation${status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`;
+  const mescolisEnabled = !!settings?.mescolis.enabled;
   return (
     <div>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <h1 className="text-2xl font-bold text-kraft-900">Commandes</h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-start">
+          {mescolisEnabled && <MesColisSyncButton />}
           <Link href={preparationHref} className="btn-secondary !py-1 !px-3 text-sm">
             Bon de préparation
           </Link>
