@@ -12,6 +12,12 @@ import {
 import { buildCheckoutSchema } from "@/lib/validators";
 import { sendMetaPurchaseEvent } from "@/lib/meta-capi";
 import { computeShippingFee } from "@/lib/site-settings";
+import {
+  buildOrderConfirmMessage,
+  normaliseTunisianPhone,
+  sendWinSmsSingle,
+} from "@/lib/winsms";
+import { formatPrice } from "@/lib/utils";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -103,6 +109,50 @@ export async function POST(req: Request) {
       fbc,
       fbp,
     });
+  }
+
+  // Best-effort order-received SMS to the customer. Independent of the OTP
+  // auto-confirmation flow, never blocks the response, never throws.
+  if (
+    settings.winsms.confirmEnabled &&
+    settings.winsms.apiKey &&
+    settings.winsms.senderId
+  ) {
+    const phone = normaliseTunisianPhone(data.customerPhone);
+    if (phone) {
+      void (async () => {
+        try {
+          // Map product ids to names so the SMS lists what was ordered. Falls
+          // back to "Article" when a product can't be resolved (e.g. removed
+          // from the catalog between read and send).
+          const products = await apiClient.listProducts().catch(() => []);
+          const nameById = new Map(products.map((p) => [p.id, p.name]));
+          const itemsText = (order.order_items || data.items.map((i) => ({
+            product_id: i.productId,
+            quantity: i.quantity,
+          })))
+            .map((it) => {
+              const name = nameById.get(it.product_id) || "Article";
+              return `${name} x${it.quantity}`;
+            })
+            .join(", ");
+          const grandTotal =
+            (typeof order.total === "number" ? order.total : 0) + shippingFee;
+          await sendWinSmsSingle({
+            apiKey: settings.winsms.apiKey,
+            sender: settings.winsms.senderId,
+            to: phone,
+            message: buildOrderConfirmMessage(settings.winsms.confirmMessage, {
+              name: data.customerName,
+              items: itemsText,
+              total: formatPrice(grandTotal),
+            }),
+          });
+        } catch {
+          // Swallow — the customer already has their order; SMS is a bonus.
+        }
+      })();
+    }
   }
 
   return NextResponse.json({ id: order.id, reference: order.id }, { status: 201 });

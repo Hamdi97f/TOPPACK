@@ -377,3 +377,9 @@ export const devisStatusUpdateSchema = z.object({
   status: z.enum(DEVIS_STATUSES).optional(),
   internalNotes: z.string().max(5000).optional(),
 });
+
+export const reviewCreateSchema = z.object({
+  authorName: z.string().trim().min(1, "Le nom est requis").max(120),
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z.string().trim().min(1, "Le commentaire est requis").max(2000),
+});

@@ -19,10 +19,9 @@ export default async function WinSmsSettingsPage() {
         Confirmation par SMS (WinSMS)
       </h1>
       <p className="text-sm text-kraft-700 mb-4">
-        Activez l&apos;auto-confirmation des commandes par code OTP envoyé par
-        SMS. Lorsque cette fonctionnalité est active, le client voit deux
-        boutons sur la page de remerciement : recevoir un code de confirmation
-        par SMS, ou demander à être rappelé pour confirmer manuellement.
+        Configurez l&apos;envoi de SMS via WinSMS : auto-confirmation par code
+        OTP sur la page de remerciement, et accusé de réception automatique
+        envoyé au client dès qu&apos;une nouvelle commande est passée.
       </p>
       <WinSmsSettingsForm initial={settings.winsms} />
     </div>

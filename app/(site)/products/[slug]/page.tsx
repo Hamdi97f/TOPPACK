@@ -5,6 +5,23 @@ import { adaptCategory, adaptProduct, apiClient } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { ExpandableDescription } from "@/components/ExpandableDescription";
+import { REVIEW_RATING_MAX } from "@/lib/reviews";
+
+function formatReviewDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function clampRating(value: number): number {
+  return Math.max(1, Math.min(REVIEW_RATING_MAX, Math.round(value)));
+}
 
 export const revalidate = 60;
 
@@ -22,13 +39,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     ? allCategories.map(adaptCategory).find((c) => c.id === product.categoryId)
     : null;
 
+  // Customer reviews ("avis client") added by the admin from /admin/products/[id].
+  // Sourced from the same hidden-category storage used elsewhere — a failure
+  // here must never break the product page.
+  const reviews = await apiClient.listProductReviews(null, product.id).catch(() => []);
+  const averageRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : null;
+
   const canCompare3D = siteSettings.boxComparator.enabled
     && product.lengthCm > 0
     && product.widthCm > 0
     && product.heightCm > 0;
 
   return (
-    <div className="container-x py-6 sm:py-8 grid md:grid-cols-2 gap-6 sm:gap-8">
+    <div className="container-x py-6 sm:py-8 space-y-8">
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
       <div className="card aspect-square bg-kraft-100 flex items-center justify-center text-9xl relative overflow-hidden">
         {product.imageUrl ? (
           <Image
@@ -64,6 +91,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <div>
         {category && <div className="text-sm text-kraft-600">{category.name}</div>}
         <h1 className="text-2xl sm:text-3xl font-bold text-kraft-900 mt-1">{product.name}</h1>
+        {averageRating != null && (
+          <div className="mt-1 flex items-center gap-2 text-sm">
+            <span aria-label={`Note moyenne : ${averageRating.toFixed(1)} sur ${REVIEW_RATING_MAX}`} className="text-amber-500">
+              {"★".repeat(Math.round(averageRating))}
+              <span className="text-kraft-300">{"★".repeat(REVIEW_RATING_MAX - Math.round(averageRating))}</span>
+            </span>
+            <span className="text-kraft-600">
+              {averageRating.toFixed(1)} ({reviews.length} avis)
+            </span>
+          </div>
+        )}
         {product.promoPrice != null && product.regularPrice != null ? (
           <div className="mt-3 flex flex-wrap items-baseline gap-2 sm:gap-3">
             <span className="text-2xl font-bold text-red-700">{formatPrice(product.price)}</span>
@@ -103,6 +141,36 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
 
       </div>
+      </div>
+
+      <section className="card p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-kraft-900 mb-4">Avis clients</h2>
+        {reviews.length === 0 ? (
+          <p className="text-sm text-kraft-600">Aucun avis pour ce produit pour le moment.</p>
+        ) : (
+          <ul className="space-y-4">
+            {reviews.map((r) => {
+              const safe = clampRating(r.rating);
+              return (
+                <li key={r.id} className="border-b border-kraft-100 pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="font-medium text-kraft-900">{r.authorName}</div>
+                    <div className="text-xs text-kraft-600">{formatReviewDate(r.createdAt)}</div>
+                  </div>
+                  <div
+                    className="text-amber-500 text-sm mt-1"
+                    aria-label={`Note : ${safe} sur ${REVIEW_RATING_MAX}`}
+                  >
+                    {"★".repeat(safe)}
+                    <span className="text-kraft-300">{"★".repeat(REVIEW_RATING_MAX - safe)}</span>
+                  </div>
+                  <p className="text-sm text-kraft-800 mt-2 whitespace-pre-wrap">{r.comment}</p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
