@@ -13,6 +13,7 @@ import {
   computeShippingFee,
   type ShippingSettings,
 } from "@/lib/site-settings";
+import { TUNISIA_GOVERNORATES } from "@/lib/tunisia-governorates";
 
 const FIELD_INPUT_PROPS: Record<
   CheckoutFieldKey,
@@ -291,6 +292,22 @@ export function BuyNowModal({
                           autoComplete={props.autoComplete}
                           className="textarea"
                         />
+                      ) : k === "city" ? (
+                        <select
+                          id={`buy-now-${k}`}
+                          name={k}
+                          required={required}
+                          defaultValue=""
+                          autoComplete={props.autoComplete}
+                          className="select"
+                        >
+                          <option value="" disabled={required}>
+                            — Sélectionnez votre gouvernorat —
+                          </option>
+                          {TUNISIA_GOVERNORATES.map((g) => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
                       ) : (
                         <input
                           id={`buy-now-${k}`}
