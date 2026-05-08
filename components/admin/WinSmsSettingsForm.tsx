@@ -24,7 +24,7 @@ export function WinSmsSettingsForm({ initial }: { initial: WinSmsSettings }) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    if (data.enabled && !data.apiKey.trim()) {
+    if ((data.enabled || data.confirmEnabled) && !data.apiKey.trim()) {
       setError("Renseignez la clé API WinSMS pour activer la fonctionnalité.");
       return;
     }
@@ -34,7 +34,7 @@ export function WinSmsSettingsForm({ initial }: { initial: WinSmsSettings }) {
       );
       return;
     }
-    if (data.enabled && !data.senderId.trim()) {
+    if ((data.enabled || data.confirmEnabled) && !data.senderId.trim()) {
       setError("Renseignez un Sender ID pour activer la fonctionnalité.");
       return;
     }
@@ -145,6 +145,52 @@ export function WinSmsSettingsForm({ initial }: { initial: WinSmsSettings }) {
             Utilisez <code>{"{code}"}</code> pour insérer le code à 6 chiffres.
             Si <code>{"{code}"}</code> est absent, le code est ajouté à la fin
             du message.
+          </p>
+        </div>
+      </section>
+
+      <section className="space-y-3 border-t border-kraft-200 pt-6">
+        <header>
+          <h2 className="font-semibold text-kraft-900">
+            Accusé de réception de commande par SMS
+          </h2>
+          <p className="text-sm text-kraft-700">
+            Lorsque cette fonctionnalité est active, un SMS est envoyé
+            automatiquement au client dès qu&apos;il passe une commande pour
+            confirmer que sa commande a bien été reçue. Le message contient
+            son nom, les articles commandés et le montant total (le numéro de
+            commande n&apos;est pas inclus). Utilise les identifiants WinSMS
+            ci-dessus.
+          </p>
+        </header>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={data.confirmEnabled}
+            onChange={(e) => set("confirmEnabled", e.target.checked)}
+          />
+          <span className="text-sm text-kraft-800">
+            Envoyer automatiquement un SMS d&apos;accusé de réception à chaque
+            nouvelle commande
+          </span>
+        </label>
+        <div>
+          <label className="label" htmlFor="confirmMessage">
+            Modèle de message
+          </label>
+          <textarea
+            id="confirmMessage"
+            rows={3}
+            maxLength={320}
+            value={data.confirmMessage}
+            onChange={(e) => set("confirmMessage", e.target.value)}
+            className="textarea"
+          />
+          <p className="text-xs text-kraft-600 mt-1">
+            Placeholders disponibles : <code>{"{name}"}</code> (nom du client),{" "}
+            <code>{"{items}"}</code> (liste des articles commandés sous la
+            forme « Produit x quantité »), <code>{"{total}"}</code> (montant
+            total TTC, livraison incluse).
           </p>
         </div>
       </section>

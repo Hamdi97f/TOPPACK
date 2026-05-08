@@ -599,11 +599,28 @@ export interface WinSmsSettings {
   apiKey: string;
   senderId: string;
   otpMessage: string;
+  /**
+   * When true, an automatic "order received" SMS is sent to the customer as
+   * soon as their order is successfully placed. Independent of the OTP
+   * auto-confirmation toggle (`enabled`) but reuses the same `apiKey`/
+   * `senderId` credentials.
+   */
+  confirmEnabled: boolean;
+  /**
+   * Template for the order-received SMS. Supported placeholders:
+   *   - `{name}`  → the customer's name as entered at checkout,
+   *   - `{items}` → comma-separated list of `Product x qty` lines,
+   *   - `{total}` → grand total (products + shipping) formatted in DT.
+   * Per the requirement, the order number is intentionally not included.
+   */
+  confirmMessage: string;
 }
 
 export const WINSMS_SENDER_ID_RE = /^[A-Za-z0-9 _-]{1,11}$/;
 export const WINSMS_DEFAULT_OTP_MESSAGE =
   "Votre code de confirmation TOPPACK est : {code}";
+export const WINSMS_DEFAULT_CONFIRM_MESSAGE =
+  "Bonjour {name}, votre commande TOPPACK ({items}) d'un montant de {total} a bien été reçue. Merci pour votre confiance !";
 
 export function defaultWinSmsSettings(): WinSmsSettings {
   return {
@@ -611,6 +628,8 @@ export function defaultWinSmsSettings(): WinSmsSettings {
     apiKey: "",
     senderId: "",
     otpMessage: WINSMS_DEFAULT_OTP_MESSAGE,
+    confirmEnabled: false,
+    confirmMessage: WINSMS_DEFAULT_CONFIRM_MESSAGE,
   };
 }
 
@@ -622,11 +641,14 @@ export function normaliseWinSmsSettings(input: unknown): WinSmsSettings {
   const senderId = WINSMS_SENDER_ID_RE.test(rawSender) ? rawSender : "";
   const apiKey = trimString(r.apiKey, 200);
   const otpMessage = trimString(r.otpMessage, 320) || defaults.otpMessage;
+  const confirmMessage = trimString(r.confirmMessage, 320) || defaults.confirmMessage;
   // The feature is only meaningful when both an api key and a sender id are
   // configured. Refuse to enable it otherwise so the customer never sees a
   // button that would always fail.
   const enabled = r.enabled === true && !!apiKey && !!senderId;
-  return { enabled, apiKey, senderId, otpMessage };
+  // Same gate for the order-received auto SMS: needs working credentials.
+  const confirmEnabled = r.confirmEnabled === true && !!apiKey && !!senderId;
+  return { enabled, apiKey, senderId, otpMessage, confirmEnabled, confirmMessage };
 }
 
 // ---------------------------------------------------------------------------

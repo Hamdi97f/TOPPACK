@@ -127,3 +127,22 @@ export function buildOtpMessage(template: string, code: string): string {
   if (tpl.includes("{code}")) return tpl.replace(/\{code\}/g, code);
   return `${tpl}\n${code}`;
 }
+
+/**
+ * Build the order-received confirmation SMS body from the admin-configured
+ * template. Supported placeholders are `{name}`, `{items}` and `{total}`;
+ * unknown placeholders are left as-is so admins can spot template typos in
+ * the customer's message rather than seeing them silently swallowed. Per
+ * the requirement the order number/reference is intentionally not exposed.
+ */
+export function buildOrderConfirmMessage(
+  template: string,
+  vars: { name: string; items: string; total: string }
+): string {
+  const tpl = (template || "").trim();
+  if (!tpl) return `${vars.name} — ${vars.items} — ${vars.total}`;
+  return tpl
+    .replace(/\{name\}/g, vars.name)
+    .replace(/\{items\}/g, vars.items)
+    .replace(/\{total\}/g, vars.total);
+}
