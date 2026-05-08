@@ -32,6 +32,14 @@ function tokenize(s: string): string[] {
     .filter((t) => t.length > 2 && !STOPWORDS.has(t));
 }
 
+/**
+ * Minimum normalised keyword overlap (matched / total question keywords)
+ * required to count a free-form message as a match for one of the standard
+ * questions. ~1/3 keeps short questions usable while rejecting unrelated
+ * messages that only share one trivial token.
+ */
+const MATCH_THRESHOLD = 0.34;
+
 /** Match the user message against the standard questions; -1 if no decent match. */
 function matchQuestion(userText: string, qa: ChatSettings["qa"]): number {
   const userTokens = tokenize(userText);
@@ -51,8 +59,7 @@ function matchQuestion(userText: string, qa: ChatSettings["qa"]): number {
       bestIdx = i;
     }
   }
-  // Require at least ~one third of the question keywords to match.
-  return bestScore >= 0.34 ? bestIdx : -1;
+  return bestScore >= MATCH_THRESHOLD ? bestIdx : -1;
 }
 
 export function ChatWidget({ settings }: { settings: ChatSettings }) {
@@ -61,6 +68,9 @@ export function ChatWidget({ settings }: { settings: ChatSettings }) {
   const [input, setInput] = useState("");
   const nextIdRef = useRef(1);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Tracks pending bot-reply timers so we can clear them on unmount and
+  // avoid setting state after the component is gone.
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   // Seed the welcome message the first time the panel is opened.
   useEffect(() => {
@@ -76,6 +86,15 @@ export function ChatWidget({ settings }: { settings: ChatSettings }) {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, open]);
+
+  // Clear any pending timers on unmount.
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const t of timers) clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
 
   const quickQuestions = useMemo(
     () => settings.qa.filter((p) => p.question.trim().length > 0),
@@ -97,7 +116,8 @@ export function ChatWidget({ settings }: { settings: ChatSettings }) {
       { id: nextIdRef.current++, role: "user", text: trimmed },
     ]);
     // Reply after a short delay so it feels conversational.
-    window.setTimeout(() => {
+    const timer = setTimeout(() => {
+      timersRef.current.delete(timer);
       if (settings.botMode) {
         const idx = matchQuestion(trimmed, settings.qa);
         if (idx >= 0) {
@@ -111,6 +131,7 @@ export function ChatWidget({ settings }: { settings: ChatSettings }) {
         pushBot("Merci pour votre message. Notre équipe vous répondra dès que possible.");
       }
     }, 350);
+    timersRef.current.add(timer);
   }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
